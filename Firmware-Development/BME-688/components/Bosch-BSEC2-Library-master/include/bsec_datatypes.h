@@ -1,5 +1,5 @@
 /**
- * Copyright (C) Bosch Sensortec GmbH. All Rights Reserved. Confidential.
+ * Copyright ( C ) Bosch Sensortec GmbH. All Rights Reserved. Confidential.
  *
  * Disclaimer
  *

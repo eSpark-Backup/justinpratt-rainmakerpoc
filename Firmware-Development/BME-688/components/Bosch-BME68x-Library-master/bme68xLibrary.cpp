@@ -36,10 +36,13 @@
  *
  */
 
+// #include <string>
 #include <string.h>
 // #include <driver/Task.h>
 
 #include "bme68xLibrary.h"
+
+#define ERROR_DUR           1000
 
 /* Maximum transaction size. Field size 17 x 3 */
 #define BME68X_MAX_READ_LENGTH 51
@@ -98,9 +101,33 @@
 #warning "Wire read requires a larger buffer size. Use SPI"
 #endif
 
+/////----------------------microsecondDelay-------------------------
+#define NOP() asm volatile ("nop")
+
+unsigned long IRAM_ATTR micros()
+{
+    return (unsigned long) (esp_timer_get_time());
+}
+void IRAM_ATTR delayMicroseconds(uint32_t us)
+{
+    uint32_t m = micros();
+    if(us){
+        uint32_t e = (m + us);
+        if(m > e){ //overflow
+            while(micros() > e){
+                NOP();
+            }
+        }
+        while(micros() < e){
+            NOP();
+        }
+    }
+}
+/////----------------------microsecondDelay-------------------------
+
 Bme68x::Bme68x(void)
 {
-	comm.i2c.wireobj = NULL;
+	comm.i2c.wireobj = (i2c_port_t) NULL;
 	comm.i2c.i2cAddr = 0;
 	comm.spi.spiobj = NULL;
 	comm.spi.cs = 0;
@@ -133,12 +160,12 @@ void Bme68x::begin(bme68xIntf intf, bme68x_read_fptr_t read, bme68x_write_fptr_t
 }
 
 /**
- * @brief Function to initialize the sensor based on the Wire library
+ * @brief Function to initialize the sensor based on ESP32 hardware i2c library
  */
-void Bme68x::begin(uint8_t i2cAddr, TwoWire &i2c, bme68x_delay_us_fptr_t idleTask)
+void Bme68x::begin(uint8_t i2cAddr, i2c_port_t i2c, bme68x_delay_us_fptr_t idleTask)
 {
 	comm.i2c.i2cAddr = i2cAddr;
-	comm.i2c.wireobj = &i2c;
+	comm.i2c.wireobj = i2c;
 	bme6.intf = BME68X_I2C_INTF;
 	bme6.read = bme68xI2cRead;
 	bme6.write = bme68xI2cWrite;
@@ -152,16 +179,18 @@ void Bme68x::begin(uint8_t i2cAddr, TwoWire &i2c, bme68x_delay_us_fptr_t idleTas
 /**
  * @brief Function to initialize the sensor based on the SPI library
  */
-void Bme68x::begin(uint8_t chipSelect, SPIClass &spi, bme68x_delay_us_fptr_t idleTask)
+void Bme68x::begin(uint8_t chipSelect, spi_device_handle_t &spi, bme68x_delay_us_fptr_t idleTask)
 {
-	gpio_set_direction(chipSelect, GPIO_MODE_OUTPUT);
-	gpio_set_level(chipSelect, 1);
-	vTaskdelay(1);
-	gpio_set_level(chipSelect, 0); /* Switch to SPI with a dummy transaction */
-	vTaskdelay(1);
-	gpio_set_level(chipSelect, HIGH);
+	gpio_reset_pin((gpio_num_t) chipSelect);
+	gpio_set_direction((gpio_num_t) chipSelect, GPIO_MODE_OUTPUT);
+	gpio_set_level((gpio_num_t) chipSelect, 1);
+	vTaskDelay(1/portTICK_PERIOD_MS);
+	gpio_set_level((gpio_num_t) chipSelect, 0); /* Switch to SPI with a dummy transaction */
+	vTaskDelay(1/portTICK_PERIOD_MS);
+	gpio_set_level((gpio_num_t) chipSelect, 1);
 	comm.spi.cs = chipSelect;
-	comm.spi.spiobj = &spi;
+
+	comm.spi.spiobj = spi;
 	bme6.intf = BME68X_SPI_INTF;
 	bme6.read = bme68xSpiRead;
 	bme6.write = bme68xSpiWrite;
@@ -528,26 +557,26 @@ void bme68xDelayUs(uint32_t periodUs, void *intfPtr) {
 /**
  * @brief Function that implements the default SPI write transaction
  */
-int8_t bme68xSpiWrite(uint8_t regAddr, const uint8_t *regData,
-        uint32_t length, void *intfPtr) {
+int8_t bme68xSpiWrite(uint8_t regAddr, const uint8_t *regData, uint32_t length, void *intfPtr) {
     bme68xScommT *comm = NULL;
 
     if (intfPtr) {
-        comm = (bme68xScommT *) intfPtr;
+        comm = (bme68xScommT *)intfPtr;
 
         if (comm->spi.spiobj) {
-            digitalWrite(comm->spi.cs, LOW);
+            spi_transaction_t t;
+            memset(&t, 0, sizeof(t));
+            t.length = 8 * (1 + length); // Command + Data
+            t.flags = SPI_TRANS_USE_TXDATA;
 
-            comm->spi.spiobj->transfer(regAddr);
-#ifdef BME68X_BURST_SPI_TRANSFER
-            comm->spi.spiobj->transfer((uint8_t *)regData, length);
-#else
-            for(uint32_t i = 0; i < length; i++) {
-                comm->spi.spiobj->transfer(regData[i]);
-            }
-#endif
+            gpio_set_level((gpio_num_t)comm->spi.cs, 0);
 
-            digitalWrite(comm->spi.cs, HIGH);
+            t.tx_data[0] = regAddr;
+            memcpy(t.tx_data + 1, regData, length);
+
+            spi_device_transmit(comm->spi.spiobj, &t);
+
+            gpio_set_level((gpio_num_t)comm->spi.cs, 1);
         } else {
             return BME68X_E_NULL_PTR;
         }
@@ -561,27 +590,36 @@ int8_t bme68xSpiWrite(uint8_t regAddr, const uint8_t *regData,
 /**
  * @brief Function that implements the default SPI read transaction
  */
-int8_t bme68xSpiRead(uint8_t regAddr, uint8_t *regData, uint32_t length,
-        void *intfPtr) {
+int8_t bme68xSpiRead(uint8_t regAddr, uint8_t *regData, uint32_t length, void *intfPtr) {
     bme68xScommT *comm = NULL;
 
     if (intfPtr) {
-        comm = (bme68xScommT *) intfPtr;
+        comm = (bme68xScommT *)intfPtr;
 
         if (comm->spi.spiobj) {
-            digitalWrite(comm->spi.cs, LOW);
+            spi_transaction_t t = {
+				
+			};
+            memset(&t, 0, sizeof(t));
+            t.length = 8 * (1 + length); // Command + Data
+            t.flags = SPI_TRANS_USE_TXDATA;
+            t.tx_data[0] = regAddr | 0x80; // Set read bit
 
-            comm->spi.spiobj->transfer(regAddr);
-            memset(regData, 0xFF, length);
-#ifdef BME68X_BURST_SPI_TRANSFER
-            comm->spi.spiobj->transfer(regData, length);
-#else
-            for(uint32_t i = 0; i < length; i++) {
-                regData[i] = comm->spi.spiobj->transfer(0xFF);
-            }
-#endif
+            gpio_set_level((gpio_num_t)comm->spi.cs, 0);
 
-            digitalWrite(comm->spi.cs, HIGH);
+
+            spi_device_transmit(comm->spi.spiobj, &t);
+
+            memset(&t, 0, sizeof(t));
+            // t.flags = 0;
+            t.flags = SPI_TRANS_USE_RXDATA;
+            t.length = 8 * length;
+            t.rxlength = 8 * length;
+            t.rx_buffer = regData;
+
+            spi_device_transmit(comm->spi.spiobj, &t);
+
+            gpio_set_level((gpio_num_t)comm->spi.cs, 1);
         } else {
             return BME68X_E_NULL_PTR;
         }
@@ -600,6 +638,7 @@ int8_t bme68xI2cWrite(uint8_t regAddr, const uint8_t *regData,
     uint32_t i;
     int8_t rslt = BME68X_OK;
     bme68xScommT *comm = NULL;
+	// uint8_t write_buf[2] = {regAddr, regData};
 
 #ifdef BME68X_I2C_BUFFER_SIZE
     if (length + 1 > BME68X_I2C_BUFFER_SIZE)
@@ -608,16 +647,33 @@ int8_t bme68xI2cWrite(uint8_t regAddr, const uint8_t *regData,
 
     if (intfPtr) {
         comm = (bme68xScommT *) intfPtr;
+        // if (comm->i2c.wireobj) {
+        //     comm->i2c.wireobj->beginTransmission(comm->i2c.i2cAddr);
+        //     comm->i2c.wireobj->write(regAddr);
+        //     for (i = 0; i < length; i++) {
+        //         comm->i2c.wireobj->write(regData[i]);
+        //     }
+        //     if (comm->i2c.wireobj->endTransmission()) {
+        //         rslt = BME68X_E_COM_FAIL;
+        //     }
+        // }
         if (comm->i2c.wireobj) {
-            comm->i2c.wireobj->beginTransmission(comm->i2c.i2cAddr);
-            comm->i2c.wireobj->write(regAddr);
+            // comm->i2c.wireobj->beginTransmission(comm->i2c.i2cAddr);
+			i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+			i2c_master_start(cmd);
+			i2c_master_write_byte(cmd, (comm->i2c.i2cAddr << 1) | I2C_MASTER_WRITE, true);
+			i2c_master_write_byte(cmd, regAddr, true);
+
             for (i = 0; i < length; i++) {
-                comm->i2c.wireobj->write(regData[i]);
+                i2c_master_write_byte(cmd, regData[i], true);
             }
-            if (comm->i2c.wireobj->endTransmission()) {
+			i2c_master_stop(cmd);
+            if (i2c_master_cmd_begin(comm->i2c.wireobj, cmd, (ERROR_DUR /portTICK_PERIOD_MS))) {
                 rslt = BME68X_E_COM_FAIL;
             }
-        } else {
+			i2c_cmd_link_delete(cmd);
+        }
+		else {
             rslt = BME68X_E_NULL_PTR;
         }
     } else {
@@ -632,7 +688,7 @@ int8_t bme68xI2cWrite(uint8_t regAddr, const uint8_t *regData,
  */ 
 int8_t bme68xI2cRead(uint8_t regAddr, uint8_t *regData, uint32_t length,
         void *intfPtr) {
-    uint32_t i;
+    // uint32_t i;
     int8_t rslt = BME68X_OK;
     bme68xScommT *comm = NULL;
 
@@ -643,18 +699,27 @@ int8_t bme68xI2cRead(uint8_t regAddr, uint8_t *regData, uint32_t length,
 
     if (intfPtr) {
         comm = (bme68xScommT *) intfPtr;
+        // if (comm->i2c.wireobj) {
+        //     comm->i2c.wireobj->beginTransmission(comm->i2c.i2cAddr);
+        //     comm->i2c.wireobj->write(regAddr);
+        //     if (comm->i2c.wireobj->endTransmission()) {
+        //         return BME68X_E_COM_FAIL;
+        //     }
+        //     comm->i2c.wireobj->requestFrom((int) comm->i2c.i2cAddr,
+        //             (int) length);
+        //     for (i = 0; (i < length) && comm->i2c.wireobj->available(); i++) {
+        //         regData[i] = comm->i2c.wireobj->read();
+        //     }
+        // }
         if (comm->i2c.wireobj) {
-            comm->i2c.wireobj->beginTransmission(comm->i2c.i2cAddr);
-            comm->i2c.wireobj->write(regAddr);
-            if (comm->i2c.wireobj->endTransmission()) {
+            if (i2c_master_write_read_device(comm->i2c.wireobj, comm->i2c.i2cAddr, 
+												&regAddr, 1, regData, length, 
+												(ERROR_DUR / portTICK_PERIOD_MS) )) 
+			{
                 return BME68X_E_COM_FAIL;
             }
-            comm->i2c.wireobj->requestFrom((int) comm->i2c.i2cAddr,
-                    (int) length);
-            for (i = 0; (i < length) && comm->i2c.wireobj->available(); i++) {
-                regData[i] = comm->i2c.wireobj->read();
-            }
-        } else {
+        }
+		 else {
             rslt = BME68X_E_NULL_PTR;
         }
     } else {

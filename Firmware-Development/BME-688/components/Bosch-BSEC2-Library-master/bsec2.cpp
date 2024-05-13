@@ -36,7 +36,7 @@
  *
  */
 
-#include "bsec2.h"
+#include "bsec2.hpp"
 
 static uint8_t workBuffer[BSEC_MAX_WORKBUFFER_SIZE];
 
@@ -75,7 +75,7 @@ bool Bsec2::begin(bme68xIntf intf, bme68x_read_fptr_t read, bme68x_write_fptr_t 
 /**
  * @brief Function to initialize the sensor based on the Wire library
  */ 
-bool Bsec2::begin(uint8_t i2cAddr, TwoWire &i2c, bme68x_delay_us_fptr_t idleTask)
+bool Bsec2::begin(uint8_t i2cAddr, i2c_port_t i2c, bme68x_delay_us_fptr_t idleTask)
 {
     sensor.begin(i2cAddr, i2c, idleTask);
 
@@ -88,7 +88,7 @@ bool Bsec2::begin(uint8_t i2cAddr, TwoWire &i2c, bme68x_delay_us_fptr_t idleTask
 /**
  * @brief Function to initialize the sensor based on the SPI library
  */
-bool Bsec2::begin(uint8_t chipSelect, SPIClass &spi, bme68x_delay_us_fptr_t idleTask)
+bool Bsec2::begin(uint8_t chipSelect, spi_device_handle_t &spi, bme68x_delay_us_fptr_t idleTask)
 {
     sensor.begin(chipSelect, spi, idleTask);
 

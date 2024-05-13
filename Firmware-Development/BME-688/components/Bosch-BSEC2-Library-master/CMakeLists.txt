@@ -1,7 +1,6 @@
-idf_component_register(SRCS "bsec2.cpp"
+idf_component_register(SRCS "bsec2.cpp" "."
                         INCLUDE_DIRS include
 #                        ../Bosch-BME68x-Library-master
-                        "."
                         REQUIRES Bosch-BME68x-Library-master
 )
 

@@ -41,9 +41,12 @@
 
 /* Includes */
 /* dependent library header */
-#include "bme68xLibrary.h"
-#include "bsec_datatypes.h"
+#include "freertos/FreeRTOS.h"
+#include "string.h"
+
 #include "bsec_interface_multi.h"
+#include "bsec_datatypes.h"
+#include "bme68xLibrary.h"
 
 #ifndef ARRAY_LEN
 #define ARRAY_LEN(array)				(sizeof(array)/sizeof(array[0]))
@@ -54,6 +57,8 @@
 #define BSEC_INSTANCE_SIZE                  3272
 #define BSEC_E_INSUFFICIENT_INSTANCE_SIZE   (bsec_library_return_t)-105
 
+#define millis() (esp_timer_get_time()/1000)
+
 typedef bsec_output_t bsecData;
 typedef bsec_virtual_sensor_t bsecSensor;
 
@@ -62,6 +67,8 @@ typedef struct
     bsecData output[BSEC_NUMBER_OUTPUTS];
     uint8_t nOutputs;
 } bsecOutputs;
+
+class Bsec2;
 
 typedef void (*bsecCallback)(const bme68xData data, const bsecOutputs outputs, const Bsec2 bsec);
 
@@ -91,20 +98,20 @@ public:
     /**
      * @brief Function to initialize the sensor based on the Wire library
      * @param i2cAddr  : The I2C address the sensor is at
-     * @param i2c      : The TwoWire object
+     * @param i2c      : The I2C Port number used by in our program
      * @param idleTask : Delay or Idle function
      * @return True if everything initialized correctly
      */
-    bool begin(uint8_t i2cAddr, TwoWire &i2c, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
+    bool begin(uint8_t i2cAddr, i2c_port_t i2c, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
 
     /**
      * @brief Function to initialize the sensor based on the SPI library
      * @param chipSelect : The chip select pin for SPI communication
-     * @param spi        : The SPIClass object
+     * @param spi        : The spi_host_device_t object
      * @param idleTask   : Delay or Idle function
      * @return True if everything initialized correctly
      */
-    bool begin(uint8_t chipSelect, SPIClass &spi, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
+    bool begin(uint8_t chipSelect, spi_device_handle_t &spi, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
 
     /**
      * @brief Function that sets the desired sensors and the sample rates

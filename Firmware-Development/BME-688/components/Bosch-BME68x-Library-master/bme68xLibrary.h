@@ -39,15 +39,20 @@
 #ifndef BME68X_LIBRARY_H
 #define BME68X_LIBRARY_H
 
+#include "freertos/FreeRTOS.h"
+#include <driver/spi_master.h>
+#include <hal/spi_types.h>
+#include <driver/i2c.h>
+#include "esp_timer.h"
 #include <stdio.h>
+#include "string"
 
 #include "src/bme68x.h"
-#include <driver/i2c.h>
+
+typedef std::string String;
 
 #define BME68X_ERROR            INT8_C(-1)
 #define BME68X_WARNING          INT8_C(1)
-
-#define I2C_MASTER_FREQ_HZ 400000
 
 /**
  * Datatype working as an interface descriptor
@@ -56,12 +61,12 @@ typedef union
 {
     struct
     {
-        // TwoWire *wireobj;
+        i2c_port_t wireobj;
         uint8_t i2cAddr;
     } i2c;
     struct
     {
-        // SPIClass *spiobj;
+        spi_device_handle_t spiobj;
         uint8_t cs;
     } spi;
 } bme68xScommT;
@@ -148,7 +153,7 @@ public:
      * @param i2c      : The TwoWire object
      * @param idleTask : Delay or Idle function
      */
-    void begin(uint8_t i2cAddr, TwoWire &i2c, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
+    void begin(uint8_t i2cAddr, i2c_port_t i2c, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
 
     /**
      * @brief Function to initialize the sensor based on the SPI library
@@ -156,7 +161,7 @@ public:
      * @param spi        : The SPIClass object
      * @param idleTask   : Delay or Idle function
      */
-    void begin(uint8_t chipSelect, SPIClass &spi, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
+    void begin(uint8_t chipSelect, spi_device_handle_t &spi, bme68x_delay_us_fptr_t idleTask = bme68xDelayUs);
 
     /**
      * @brief Function to read a register
