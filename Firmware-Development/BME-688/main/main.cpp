@@ -4,30 +4,41 @@
 #include "strings.h"
 #include <stdio.h>
 #include <bsec2.hpp>
+#include <commMux.hpp>
 
-/*
- You have to set this config value with menuconfig
- CONFIG_INTERFACE
- for i2c
- CONFIG_MODEL
- CONFIG_SDA_GPIO
- CONFIG_SCL_GPIO
- CONFIG_RESET_GPIO
- for SPI
- CONFIG_CS_GPIO
- CONFIG_DC_GPIO
- CONFIG_RESET_GPIO
-*/
+/* Communication Interface's Defines */
+#define I2C_NUM             I2C_NUM_0                               //i2c port
+#define I2C_MASTER_FREQ_HZ  400000                                  //i2c communication frequency
+// #define I2C_ADDRESS         BME68X_I2C_ADDR_LOW                     //i2c address of BME688
+#define CONFIG_SDA_GPIO     GPIO_NUM_23
+#define CONFIG_SCL_GPIO     GPIO_NUM_22
+////-----------------------------------
+#define SPI_COMM_SPEED      32000000
+#define CONFIG_MOSI_GPIO    GPIO_NUM_18
+#define CONFIG_MISO_GPIO    GPIO_NUM_19
+#define CONFIG_SCLK_GPIO    GPIO_NUM_5
+#define CONFIG_CS_GPIO      GPIO_NUM_33
+#define SPI_INTERFACE       SPI2_HOST
 
 
 /* Macros used */
-#define PANIC_LED           GPIO_NUM_2
+#define PANIC_LED           GPIO_NUM_13                             //GPIO_NUM_2 on esp32, GPIO_NUM_13 on huzzah32
 #define ERROR_DUR           1000
-#define I2C_NUM             I2C_NUM_0                               //i2c port
-#define I2C_MASTER_FREQ_HZ  400000                                  //i2c communication frequency
-#define I2C_ADDRESS         BME68X_I2C_ADDR_LOW                     //i2c address of BME688
+#define DEV_KIT_SENSORS     8
+#define MEAS_DUR            140
+// #define MOUNT_POINT         "/Dev_Kit"                              //SD Card
+// #define LOG_FILE_NAME       "/BME688_Datalogger_Log.csv"            //SD Card
+// #define MAX_CHAR_SIZE       64
 
 static const char *TAG = "[MAIN]";
+
+
+Bme68x bme[DEV_KIT_SENSORS];
+commMux commSetup[DEV_KIT_SENSORS];
+uint8_t lastMeasindex[DEV_KIT_SENSORS] = {0};
+bme68xData sensorData[DEV_KIT_SENSORS] = {0};
+String logHeader;
+uint32_t lastLogged = 0;
 
 /* Helper functions declarations */
 /**
@@ -46,83 +57,6 @@ void errLeds(void)
     }
 }
 
-/**
- * @brief : This function checks the BSEC status, prints the respective error code. Halts in case of error
- * @param[in] bsec  : Bsec2 class object
- */
-void checkBsecStatus(Bsec2 bsec)
-{
-    if (bsec.status < BSEC_OK)
-    {
-        // ESP_LOGE(TAG, "%s BSEC error code : " + String(bsec.status), func_TAG);
-        ESP_LOGE(TAG, "%s: BSEC error code : %d", __func__, bsec.status);
-        errLeds(); /* Halt in case of failure */
-    }
-    else if (bsec.status > BSEC_OK)
-    {
-        ESP_LOGW(TAG, "%s: BSEC warning code : %d", __func__, bsec.status);
-    }
-
-    if (bsec.sensor.status < BME68X_OK)
-    {
-        ESP_LOGE(TAG, "%s: BME68X error code : %d", __func__, bsec.sensor.status);
-        errLeds(); /* Halt in case of failure */
-    }
-    else if (bsec.sensor.status > BME68X_OK)
-    {
-        ESP_LOGW(TAG, "%s: BME68X warning code : %d", __func__, bsec.sensor.status);
-    }
-}
-
-/**
- * @brief : This function is called by the BSEC library when a new output is available
- * @param[in] input     : BME68X sensor data before processing
- * @param[in] outputs   : Processed BSEC BSEC output data
- * @param[in] bsec      : Instance of BSEC2 calling the callback
- */
-void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bsec)
-{
-    if (!outputs.nOutputs)
-    {
-        return;
-    }
-    long tempVar = (outputs.output[0].time_stamp / INT64_C(1000000));
-    ESP_LOGI(TAG, "BSEC outputs:\n\ttimestamp = %ld", tempVar);
-    for (uint8_t i = 0; i < outputs.nOutputs; i++)
-    {
-        const bsecData output  = outputs.output[i];
-        switch (output.sensor_id)
-        {
-            case BSEC_OUTPUT_IAQ:
-                ESP_LOGI(TAG, "\tiaq = %f", output.signal);
-                ESP_LOGI(TAG, "\tiaq accuracy = %d", (int) output.accuracy);
-                break;
-            case BSEC_OUTPUT_RAW_TEMPERATURE:
-                ESP_LOGI(TAG, "\ttemperature = %f", output.signal);
-                break;
-            case BSEC_OUTPUT_RAW_PRESSURE:
-                ESP_LOGI(TAG, "\tpressure = %f", output.signal);
-                break;
-            case BSEC_OUTPUT_RAW_HUMIDITY:
-                ESP_LOGI(TAG, "\thumidity = %f", output.signal);
-                break;
-            case BSEC_OUTPUT_RAW_GAS:
-                ESP_LOGI(TAG, "\tgas resistance = %f", output.signal);
-                break;
-            case BSEC_OUTPUT_STABILIZATION_STATUS:
-                ESP_LOGI(TAG, "\tstabilization status = %f", output.signal);
-                break;
-            case BSEC_OUTPUT_RUN_IN_STATUS:
-                ESP_LOGI(TAG, "\trun in status = %f", output.signal);
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-/* Create an object of the class Bsec2 */
-Bsec2 envSensor;
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,29 +64,10 @@ extern "C" {
 
 void app_main(void)
 {
-    // const char *func_TAG = "app_main:";
-
-    // gpio_set_direction();
-    // gpio_set_level();
-
-
-    /* Desired subscription list of BSEC2 outputs */
-    bsecSensor sensorList[] = {
-            BSEC_OUTPUT_IAQ,
-            BSEC_OUTPUT_RAW_TEMPERATURE,
-            BSEC_OUTPUT_RAW_PRESSURE,
-            BSEC_OUTPUT_RAW_HUMIDITY,
-            BSEC_OUTPUT_RAW_GAS,
-            BSEC_OUTPUT_STABILIZATION_STATUS,
-            BSEC_OUTPUT_RUN_IN_STATUS
-    };
-
     /* Initialize the communication interfaces */
-    // Serial.begin(115200);
-    // Wire.begin();
     gpio_set_direction(PANIC_LED, GPIO_MODE_OUTPUT);
 
-#if CONFIG_I2C_INTERFACE
+    //I2C interface
     i2c_config_t i2c_config = {
 		.mode = I2C_MODE_MASTER,
 		.sda_io_num = CONFIG_SDA_GPIO,
@@ -163,25 +78,17 @@ void app_main(void)
             .clk_speed = I2C_MASTER_FREQ_HZ,    },
 		.clk_flags = 0
 	};
-	ESP_LOGI(TAG, "INTERFACE is i2c");
+	ESP_LOGI(TAG, "/* I2C INTERFACE */");
 	ESP_LOGI(TAG, "CONFIG_SDA_GPIO=%d",CONFIG_SDA_GPIO);
 	ESP_LOGI(TAG, "CONFIG_SCL_GPIO=%d",CONFIG_SCL_GPIO);
-	ESP_LOGI(TAG, "CONFIG_RESET_GPIO=%d",CONFIG_RESET_GPIO);
     ESP_ERROR_CHECK(i2c_param_config(I2C_NUM, &i2c_config));
-	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, I2C_MODE_MASTER, 0, 0, 0));
-    
-    /* Initialize the library and interfaces */             //I2C interface
-    if (!envSensor.begin(BME68X_I2C_ADDR_LOW, I2C_NUM))
-    {
-        checkBsecStatus(envSensor);
-    }
-#endif // CONFIG_I2C_INTERFACE
+	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, i2c_config.mode, 0, 0, 0));
 
-#if CONFIG_SPI_INTERFACE
+    //SPI interface
     spi_bus_config_t bus_cfg = {
-        .mosi_io_num = CONFIG_MOSI_GPIO,    // Set appropriate MOSI pin if needed
-        .miso_io_num = CONFIG_MISO_GPIO,    // Set appropriate MISO pin if needed
-        .sclk_io_num = CONFIG_SCLK_GPIO,    // Set appropriate SCLK pin if needed
+        .mosi_io_num = CONFIG_MOSI_GPIO,
+        .miso_io_num = CONFIG_MISO_GPIO,
+        .sclk_io_num = CONFIG_SCLK_GPIO,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .data4_io_num = -1,
@@ -193,7 +100,6 @@ void app_main(void)
         .isr_cpu_id = INTR_CPU_ID_AUTO,
         .intr_flags = 0
     };
-
     spi_device_interface_config_t dev_cfg = {
         .command_bits = 0,
         .address_bits = 0,
@@ -203,7 +109,7 @@ void app_main(void)
         .duty_cycle_pos = 128,
         .cs_ena_pretrans = 0,
         .cs_ena_posttrans = 0,
-        .clock_speed_hz = 1000000,            // 1 MHz clock speed
+        .clock_speed_hz = SPI_COMM_SPEED,
         .input_delay_ns = 0,
         .spics_io_num = CONFIG_CS_GPIO,
         .flags = 0,
@@ -212,51 +118,110 @@ void app_main(void)
         .post_cb = nullptr,
     };
     spi_device_handle_t spi;
-    spi_host_device_t spi_host = (spi_host_device_t)CONFIG_SPI_INTERFACE; //SPI2_HOST;
+    spi_host_device_t spi_host = (spi_host_device_t)SPI_INTERFACE; //SPI2_HOST;
     ESP_ERROR_CHECK(spi_bus_initialize(spi_host, &bus_cfg, SPI_DMA_CH_AUTO));
     ESP_ERROR_CHECK(spi_bus_add_device(spi_host, &dev_cfg, &spi));
-	ESP_LOGI(TAG, "INTERFACE is SPI");
+	ESP_LOGI(TAG, "/* SPI INTERFACE */");
 	ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d",CONFIG_MOSI_GPIO);
 	ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d",CONFIG_MISO_GPIO);
 	ESP_LOGI(TAG, "CONFIG_SCLK_GPIO=%d",CONFIG_SCLK_GPIO);
 	ESP_LOGI(TAG, "CONFIG_CS_GPIO=%d",CONFIG_CS_GPIO);
-	ESP_LOGI(TAG, "CONFIG_RESET_GPIO=%d",CONFIG_RESET_GPIO);
-    
-    /* Initialize the library and interfaces */             //SPI interface
-    if (!envSensor.begin(CONFIG_CS_GPIO, spi))
-    {
-        checkBsecStatus(envSensor);
-    }
-#endif // CONFIG_SPI_INTERFACE
 
-    /* Valid for boards with USB-COM. Wait until the port is open */
-    // while(!Serial) vTaskDelay(10);
+    commMuxBegin(I2C_NUM, spi);
+    vTaskDelay(100 /portTICK_PERIOD_MS);
 
-
-    ESP_LOGI(TAG, "BSEC library version %d.%d.%d.%d",
-            envSensor.version.major,
-            envSensor.version.minor,
-            envSensor.version.major_bugfix,
-            envSensor.version.minor_bugfix);
-
-    /* Subsribe to the desired BSEC2 outputs */
-    if (!envSensor.updateSubscription(sensorList, ARRAY_LEN(sensorList), BSEC_SAMPLE_RATE_ULP))
-    {
-        checkBsecStatus(envSensor);
+    /* Communication interface set for all the 8 sensors in the development kit */
+    for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
+        commSetup[i] = commMuxSetConfig(I2C_NUM, spi, i, commSetup[i]);
+        bme[i].begin(BME68X_SPI_INTF, commMuxRead, commMuxWrite, commMuxDelay, &commSetup[i]);
+            if(bme[i].checkStatus()) {
+                ESP_LOGI(TAG, "Initializing sensor %d failed with error %s", i, (char *) bme[i].statusString().c_str());
+                errLeds();
+            }
     }
 
-    /* Whenever new data is available call the newDataCallback function */
-    envSensor.attachCallback(newDataCallback);
+    /* Setting the default heater profile configuration */
+    for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
+        bme[i].setTPH();
 
+        /* Heater temperature in degree Celsius as per the suggested heater profile
+            */
+        uint16_t tempProf[10] = {320, 100, 100, 100, 200, 200, 200, 320, 320, 320};
+        /* Multiplier to the shared heater duration */
+        uint16_t mulProf[10] = {5, 2, 10, 30, 5, 5, 5, 5, 5, 5};
+        /* Shared heating duration in milliseconds */
+        uint16_t sharedHeatrDur = MEAS_DUR - bme[i].getMeasDur(BME68X_PARALLEL_MODE);
+
+        bme[i].setHeaterProf(tempProf, mulProf, sharedHeatrDur, 10);
+
+        /* Parallel mode of sensor operation */
+        bme[i].setOpMode(BME68X_PARALLEL_MODE);
+    }
     
     while(1){
-        /* Call the run function often so that the library can 
-        * check if it is time to read new data from the sensor  
-        * and process it.
-        */
-        if (!envSensor.run())
-        {
-            checkBsecStatus(envSensor);
+        uint8_t nFieldsLeft = 0;
+        int16_t indexDiff;
+        bool newLogdata = false;
+        /* Control loop for data acquisition - checks if the data is available */
+        if ((millis() - lastLogged) >= MEAS_DUR) {
+
+            lastLogged = millis();
+            for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
+                if (bme[i].fetchData()) {
+                    do {
+                        nFieldsLeft = bme[i].getData(sensorData[i]);
+                        /* Check if new data is received */
+                        if (sensorData[i].status & BME68X_NEW_DATA_MSK) {
+                            /* Inspect miss of data index */
+                            indexDiff = (int16_t)sensorData[i].meas_index - (int16_t)lastMeasindex[i];
+                            if (indexDiff > 1) {
+
+                                ESP_LOGE(TAG, "Skip I: %d , DIFF: %d, MI: %d, LMI: %d, S: %X",
+                                         i, indexDiff, sensorData[i].meas_index, lastMeasindex[i], sensorData[i].status);
+                                errLeds();
+                            }
+                            lastMeasindex[i] = sensorData[i].meas_index;
+
+                            logHeader += millis();
+                            logHeader += ",";
+                            logHeader += i;
+                            logHeader += ",";
+                            logHeader += sensorData[i].temperature;
+                            logHeader += ",";
+                            logHeader += sensorData[i].pressure;
+                            logHeader += ",";
+                            logHeader += sensorData[i].humidity;
+                            logHeader += ",";
+                            logHeader += sensorData[i].gas_resistance;
+                            logHeader += ",";
+                            logHeader += sensorData[i].gas_index;
+                            logHeader += ",";
+                            logHeader += sensorData[i].meas_index;
+                            logHeader += ",";
+                            logHeader += sensorData[i].idac;
+                            logHeader += ",";
+                            // logHeader += String(sensorData[i].status, HEX);
+                            // logHeader += ",";
+                            logHeader += sensorData[i].status & BME68X_GASM_VALID_MSK;
+                            logHeader += ",";
+                            logHeader += sensorData[i].status & BME68X_HEAT_STAB_MSK;
+                            logHeader += "\r\n";
+                            newLogdata = true;
+                        }
+                    } while (nFieldsLeft);
+                }
+            }
+        }
+
+        if (newLogdata) {
+            newLogdata = false;
+
+            gpio_set_level(PANIC_LED, 1);
+
+            ESP_LOGI(TAG, "Readings: %s", logHeader.c_str());
+            logHeader = "";
+
+            gpio_set_level(PANIC_LED, 0);
         }
     }
 }

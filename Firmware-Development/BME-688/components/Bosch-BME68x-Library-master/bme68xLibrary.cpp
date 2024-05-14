@@ -101,29 +101,29 @@
 #warning "Wire read requires a larger buffer size. Use SPI"
 #endif
 
-/////----------------------microsecondDelay-------------------------
+// /////----------------------microsecondDelay-------------------------
 #define NOP() asm volatile ("nop")
 
-unsigned long IRAM_ATTR micros()
-{
-    return (unsigned long) (esp_timer_get_time());
-}
-void IRAM_ATTR delayMicroseconds(uint32_t us)
-{
-    uint32_t m = micros();
-    if(us){
-        uint32_t e = (m + us);
-        if(m > e){ //overflow
-            while(micros() > e){
-                NOP();
-            }
-        }
-        while(micros() < e){
-            NOP();
-        }
-    }
-}
-/////----------------------microsecondDelay-------------------------
+// unsigned long IRAM_ATTR micros()
+// {
+//     return (unsigned long) (esp_timer_get_time());
+// }
+// void IRAM_ATTR delayMicroseconds(uint32_t us)
+// {
+//     uint32_t m = micros();
+//     if(us){
+//         uint32_t e = (m + us);
+//         if(m > e){ //overflow
+//             while(micros() > e){
+//                 NOP();
+//             }
+//         }
+//         while(micros() < e){
+//             NOP();
+//         }
+//     }
+// }
+// /////----------------------microsecondDelay-------------------------
 
 Bme68x::Bme68x(void)
 {
@@ -551,7 +551,21 @@ String Bme68x::statusString(void)
  */
 void bme68xDelayUs(uint32_t periodUs, void *intfPtr) {
     (void) intfPtr;
-    delayMicroseconds(periodUs);
+    // delayMicroseconds(periodUs);
+	// vTaskDelay(periodUs /portTICK_PERIOD_MS);
+
+	uint32_t m = (unsigned long) (esp_timer_get_time());
+    if(periodUs){
+        uint32_t e = (m + periodUs);
+        if(m > e){ //overflow
+            while((unsigned long) (esp_timer_get_time()) > e){
+                NOP();
+            }
+        }
+        while((unsigned long) (esp_timer_get_time()) < e){
+            NOP();
+        }
+    }
 }
 
 /**
@@ -597,9 +611,7 @@ int8_t bme68xSpiRead(uint8_t regAddr, uint8_t *regData, uint32_t length, void *i
         comm = (bme68xScommT *)intfPtr;
 
         if (comm->spi.spiobj) {
-            spi_transaction_t t = {
-				
-			};
+            spi_transaction_t t;
             memset(&t, 0, sizeof(t));
             t.length = 8 * (1 + length); // Command + Data
             t.flags = SPI_TRANS_USE_TXDATA;

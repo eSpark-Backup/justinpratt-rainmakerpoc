@@ -9,26 +9,26 @@ menu "BME688 Configuration"
 		default 19 if IDF_TARGET_ESP32C3
 		default 30 if IDF_TARGET_ESP32C6
 
-	choice INTERFACE
-		prompt "Interface"
-		default SPI_INTERFACE
-		help
-			Select Interface.
-		config SPI_INTERFACE
-			bool "SPI Interface"
-			help
-				SPI Interface.
-		config I2C_INTERFACE
-			bool "I2C Interface"
-			help
-				I2C Interface.
-	endchoice
+	#choice INTERFACE
+	#	prompt "Interface"
+	#	default SPI_INTERFACE
+	#	help
+	#		Select Interface.
+	#	config SPI_INTERFACE
+	#		bool "SPI Interface"
+	#		help
+	#			SPI Interface.
+	#	config I2C_INTERFACE
+	#		bool "I2C Interface"
+	#		help
+	#			I2C Interface.
+	#endchoice
 
 	config SCL_GPIO
-		depends on I2C_INTERFACE
+		#depends on I2C_INTERFACE
 		int "SCL GPIO number"
 		range 0 GPIO_RANGE_MAX
-		default 22 if IDF_TARGET_ESP32
+		default 22 if IDF_TARGET_ADAFRUIT_HUZZAH32
 		default 12 if IDF_TARGET_ESP32S2
 		default 12 if IDF_TARGET_ESP32S3
 		default  6 # C3 and others
@@ -38,11 +38,11 @@ menu "BME688 Configuration"
 			GPIOs 35-39 are input-only so cannot be used as outputs.
 
 	config SDA_GPIO
-		depends on I2C_INTERFACE
+		#depends on I2C_INTERFACE
 		int "SDA GPIO number"
 		range 0 GPIO_RANGE_MAX
 		#default 21 if IDF_TARGET_ESP32
-		default 23 if IDF_TARGET_ESP32
+		default 23 if IDF_TARGET_ADAFRUIT_HUZZAH32
 		default 11 if IDF_TARGET_ESP32S2
 		default 11 if IDF_TARGET_ESP32S3
 		default  5 # C3 and others
@@ -52,11 +52,11 @@ menu "BME688 Configuration"
 			GPIOs 35-39 are input-only so cannot be used as outputs.
 
 	config MOSI_GPIO
-		depends on SPI_INTERFACE
+		#depends on SPI_INTERFACE
 		int "MOSI GPIO number"
 		range 0 GPIO_RANGE_MAX
 		#default 23 if IDF_TARGET_ESP32
-		default 18 if IDF_TARGET_ESP32
+		default 18 if IDF_TARGET_ADAFRUIT_HUZZAH32
 		default 35 if IDF_TARGET_ESP32S2
 		default 35 if IDF_TARGET_ESP32S3
 		default  1 # C3 and others
@@ -67,10 +67,10 @@ menu "BME688 Configuration"
 			On the ESP32-S2, GPIO 46 is input-only so cannot be used as outputs.
 
 	config MISO_GPIO
-		depends on SPI_INTERFACE
+		#depends on SPI_INTERFACE
 		int "MISO GPIO number"
 		range 0 GPIO_RANGE_MAX
-		default 19 if IDF_TARGET_ESP32
+		default 19 if IDF_TARGET_ADAFRUIT_HUZZAH32
 		default 35 if IDF_TARGET_ESP32S2
 		default 35 if IDF_TARGET_ESP32S3
 		default  1 # C3 and others
@@ -81,11 +81,11 @@ menu "BME688 Configuration"
 			On the ESP32-S2, GPIO 46 is input-only so cannot be used as outputs.
 
 	config SCLK_GPIO
-		depends on SPI_INTERFACE
+		#depends on SPI_INTERFACE
 		int "SCLK GPIO number"
 		range 0 GPIO_RANGE_MAX
 		#default 18 if IDF_TARGET_ESP32
-		default 5 if IDF_TARGET_ESP32
+		default 5 if IDF_TARGET_ADAFRUIT_HUZZAH32
 		default 36 if IDF_TARGET_ESP32S2
 		default 36 if IDF_TARGET_ESP32S3
 		default  2 # C3 and others
@@ -96,11 +96,11 @@ menu "BME688 Configuration"
 			On the ESP32-S2, GPIO 46 is input-only so cannot be used as outputs.
 
 	config CS_GPIO
-		depends on SPI_INTERFACE
+		#depends on SPI_INTERFACE
 		int "CS GPIO number"
 		range 0 GPIO_RANGE_MAX
 		#default  5 if IDF_TARGET_ESP32
-		default  10 if IDF_TARGET_ESP32
+		default  33 if IDF_TARGET_ADAFRUIT_HUZZAH32
 		default 34 if IDF_TARGET_ESP32S2
 		default 34 if IDF_TARGET_ESP32S3
 		default 10 # C3 and others
