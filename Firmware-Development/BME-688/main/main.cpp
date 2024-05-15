@@ -123,7 +123,7 @@ void app_main(void)
     ESP_ERROR_CHECK(spi_bus_add_device(spi_host, &dev_cfg, &spi));
 	ESP_LOGI(TAG, "/* SPI INTERFACE */");
 	ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d",CONFIG_MOSI_GPIO);
-	ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d",CONFIG_MISO_GPIO);
+	ESP_LOGI(TAG, "CONFIG_MISO_GPIO=%d",CONFIG_MISO_GPIO);
 	ESP_LOGI(TAG, "CONFIG_SCLK_GPIO=%d",CONFIG_SCLK_GPIO);
 	ESP_LOGI(TAG, "CONFIG_CS_GPIO=%d",CONFIG_CS_GPIO);
 
@@ -133,15 +133,18 @@ void app_main(void)
     /* Communication interface set for all the 8 sensors in the development kit */
     for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
         commSetup[i] = commMuxSetConfig(I2C_NUM, spi, i, commSetup[i]);
+        // setChipSelect(I2C_NUM, commSetup[i].select);
         bme[i].begin(BME68X_SPI_INTF, commMuxRead, commMuxWrite, commMuxDelay, &commSetup[i]);
             if(bme[i].checkStatus()) {
-                ESP_LOGI(TAG, "Initializing sensor %d failed with error %s", i, (char *) bme[i].statusString().c_str());
+                ESP_LOGE(TAG, "Initializing sensor '%d' failed with error: %s", i, bme[i].statusString().c_str());
                 errLeds();
             }
     }
 
     /* Setting the default heater profile configuration */
     for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
+        ESP_LOGD(TAG, "Performing profile configuration on sensor '%d'.", i);
+        
         bme[i].setTPH();
 
         /* Heater temperature in degree Celsius as per the suggested heater profile
@@ -156,6 +159,7 @@ void app_main(void)
 
         /* Parallel mode of sensor operation */
         bme[i].setOpMode(BME68X_PARALLEL_MODE);
+        ESP_LOGD(TAG, "Configuration succesfull.");
     }
     
     while(1){

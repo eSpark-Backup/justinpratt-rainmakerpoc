@@ -36,10 +36,13 @@
 
  */
 
+#include "esp_log.h"
 #include "commMux.hpp"
 
 #define CLOCK_FREQUENCY 400000
 #define COMM_SPEED 8000000
+
+static const char *TAG = "[commMux]";
 
 const uint8_t I2C_EXPANDER_ADDR = 0x20;
 const uint8_t I2C_EXPANDER_OUTPUT_REG_ADDR = 0x01;
@@ -75,6 +78,8 @@ void IRAM_ATTR delayMicroseconds(uint32_t us)
 }
 /////----------------------microsecondDelay-------------------------
 
+static void setChipSelect(i2c_port_t wireobj, uint8_t mask);
+
 /**
  * @brief Function to configure the communication across sensors
  */
@@ -83,6 +88,10 @@ commMux commMuxSetConfig(i2c_port_t wireobj, spi_device_handle_t &spiobj, uint8_
 	comm.select = ((0x01 << idx) ^ 0xFF);
 	comm.spiobj = &spiobj;
 	comm.wireobj = wireobj;
+
+	ESP_LOGD(TAG, "Selecting %d CS line on MUX IC", idx);
+	setChipSelect(comm.wireobj, comm.select);
+	ESP_LOGD(TAG, "Selection complete");
 
 	return comm;
 }
@@ -99,13 +108,15 @@ void commMuxBegin(i2c_port_t wireobj, spi_device_handle_t &spiobj)
 	i2c_master_write_byte(cmd, I2C_EXPANDER_CONFIG_REG_MASK, true);
 
 	i2c_master_stop(cmd);
-	i2c_master_cmd_begin(wireobj, cmd, (1000 /portTICK_PERIOD_MS));
+	if(i2c_master_cmd_begin(wireobj, cmd, (1000 /portTICK_PERIOD_MS)) != ESP_OK){
+		ESP_LOGE(TAG, "Initializing I2C Mux IC Failed.");
+	}
 
 	i2c_cmd_link_delete(cmd);
 }
 
 /** 
- * @brief Function to set the ship select pin of the SPI
+ * @brief Function to set the chip select pin of the SPI
  */
 static void setChipSelect(i2c_port_t wireobj, uint8_t mask)
 {
@@ -116,7 +127,9 @@ static void setChipSelect(i2c_port_t wireobj, uint8_t mask)
 	i2c_master_write_byte(cmd, mask, true);
 
 	i2c_master_stop(cmd);
-	i2c_master_cmd_begin(wireobj, cmd, (1000 /portTICK_PERIOD_MS));
+	if(i2c_master_cmd_begin(wireobj, cmd, (1000 /portTICK_PERIOD_MS)) != ESP_OK){
+		ESP_LOGE(TAG, "Selecting CS line on I2C Mux IC Failed.");
+	}
 
 	i2c_cmd_link_delete(cmd);
 }

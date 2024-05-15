@@ -449,7 +449,7 @@ typedef struct
      * 
      *   | Virtual sensor             | Value |  Accuracy description                                                                                                                                         |
      *   |----------------------------|-------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-     *   | REGRESSION_ESTIMATE_x*            |   0   | No valid regression estimate output found - BSEC collecting gas features                                                                                                    |   
+     *   | REGRESSION_ESTIMATE_x*     |   0   | No valid regression estimate output found - BSEC collecting gas features                                                                                                    |   
      *   |                            |   2   | Predicted regression estimate output is not within the value of the label present in the training data |	 
      *   |                            |   3   | Predicted regression estimate output is within the the value of the label present in the training data                                                          |
      *
