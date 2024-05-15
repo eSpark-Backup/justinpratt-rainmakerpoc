@@ -143,7 +143,7 @@ void app_main(void)
 
     /* Setting the default heater profile configuration */
     for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
-        ESP_LOGD(TAG, "Performing profile configuration on sensor '%d'.", i);
+        ESP_LOGI(TAG, "Performing profile configuration on sensor '%d'.", i);
         
         bme[i].setTPH();
 
@@ -159,7 +159,7 @@ void app_main(void)
 
         /* Parallel mode of sensor operation */
         bme[i].setOpMode(BME68X_PARALLEL_MODE);
-        ESP_LOGD(TAG, "Configuration succesfull.");
+        ESP_LOGI(TAG, "Configuration succesfull.");
     }
     
     while(1){

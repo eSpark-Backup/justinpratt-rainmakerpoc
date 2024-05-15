@@ -89,9 +89,9 @@ commMux commMuxSetConfig(i2c_port_t wireobj, spi_device_handle_t &spiobj, uint8_
 	comm.spiobj = &spiobj;
 	comm.wireobj = wireobj;
 
-	ESP_LOGD(TAG, "Selecting %d CS line on MUX IC", idx);
+	ESP_LOGI(TAG, "Selecting %d CS line on MUX IC", idx);
 	setChipSelect(comm.wireobj, comm.select);
-	ESP_LOGD(TAG, "Selection complete");
+	ESP_LOGI(TAG, "Selection complete");
 
 	return comm;
 }
