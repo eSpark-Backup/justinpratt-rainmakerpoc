@@ -38,6 +38,8 @@
 
 #include "bsec2.hpp"
 
+static const char *TAG = "[bsec2]";
+
 static uint8_t workBuffer[BSEC_MAX_WORKBUFFER_SIZE];
 
 /**
@@ -45,6 +47,8 @@ static uint8_t workBuffer[BSEC_MAX_WORKBUFFER_SIZE];
  */
 Bsec2::Bsec2(void)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     ovfCounter = 0;
     lastMillis = 0;
     status = BSEC_OK;
@@ -64,6 +68,8 @@ Bsec2::Bsec2(void)
 bool Bsec2::begin(bme68xIntf intf, bme68x_read_fptr_t read, bme68x_write_fptr_t write,
         bme68x_delay_us_fptr_t idleTask, void *intfPtr)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     sensor.begin(intf, read, write, idleTask, intfPtr);
 
     if (sensor.checkStatus() == BME68X_ERROR)
@@ -77,6 +83,8 @@ bool Bsec2::begin(bme68xIntf intf, bme68x_read_fptr_t read, bme68x_write_fptr_t 
  */ 
 bool Bsec2::begin(uint8_t i2cAddr, i2c_port_t i2c, bme68x_delay_us_fptr_t idleTask)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     sensor.begin(i2cAddr, i2c, idleTask);
 
     if (sensor.checkStatus() == BME68X_ERROR)
@@ -90,6 +98,8 @@ bool Bsec2::begin(uint8_t i2cAddr, i2c_port_t i2c, bme68x_delay_us_fptr_t idleTa
  */
 bool Bsec2::begin(uint8_t chipSelect, spi_device_handle_t &spi, bme68x_delay_us_fptr_t idleTask)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     sensor.begin(chipSelect, spi, idleTask);
 
     if (sensor.checkStatus() == BME68X_ERROR)
@@ -103,6 +113,8 @@ bool Bsec2::begin(uint8_t chipSelect, spi_device_handle_t &spi, bme68x_delay_us_
  */
 bool Bsec2::updateSubscription(bsecSensor sensorList[], uint8_t nSensors, float sampleRate)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     bsec_sensor_configuration_t virtualSensors[BSEC_NUMBER_OUTPUTS], sensorSettings[BSEC_MAX_PHYSICAL_SENSOR];
     uint8_t nSensorSettings = BSEC_MAX_PHYSICAL_SENSOR;
 
@@ -125,6 +137,8 @@ bool Bsec2::updateSubscription(bsecSensor sensorList[], uint8_t nSensors, float 
  */
 bool Bsec2::run(void)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     uint8_t nFieldsLeft = 0;
     bme68xData data;
     int64_t currTimeNs = getTimeMs() * INT64_C(1000000);
@@ -195,6 +209,8 @@ bool Bsec2::run(void)
  */
 bool Bsec2::getState(uint8_t *state)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     uint32_t n_serialized_state = BSEC_MAX_STATE_BLOB_SIZE;
 
     status = bsec_get_state_m(bsecInstance, 0, state, BSEC_MAX_STATE_BLOB_SIZE, workBuffer, BSEC_MAX_WORKBUFFER_SIZE,
@@ -209,6 +225,8 @@ bool Bsec2::getState(uint8_t *state)
  */
 bool Bsec2::setState(uint8_t *state)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     status = bsec_set_state_m(bsecInstance, state, BSEC_MAX_STATE_BLOB_SIZE, workBuffer, BSEC_MAX_WORKBUFFER_SIZE);
     if (status != BSEC_OK)
         return false;
@@ -223,6 +241,8 @@ bool Bsec2::setState(uint8_t *state)
  */
 bool Bsec2::getConfig(uint8_t *config)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     uint32_t n_serialized_settings = 0;
     
     status = bsec_get_configuration_m(bsecInstance, 0, config, BSEC_MAX_PROPERTY_BLOB_SIZE, workBuffer, BSEC_MAX_WORKBUFFER_SIZE, &n_serialized_settings);
@@ -237,6 +257,8 @@ bool Bsec2::getConfig(uint8_t *config)
  */
 bool Bsec2::setConfig(const uint8_t *config)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     status = bsec_set_configuration_m(bsecInstance, config, BSEC_MAX_PROPERTY_BLOB_SIZE, workBuffer, BSEC_MAX_WORKBUFFER_SIZE);
     if (status != BSEC_OK)
         return false;
@@ -251,6 +273,8 @@ bool Bsec2::setConfig(const uint8_t *config)
  */
 int64_t Bsec2::getTimeMs(void)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int64_t timeMs = millis();
 
     if (lastMillis > timeMs) /* An overflow occurred */
@@ -287,6 +311,8 @@ void Bsec2::clearMemory(void)
  */
 bool Bsec2::processData(int64_t currTimeNs, const bme68xData &data)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     bsec_input_t inputs[BSEC_MAX_PHYSICAL_SENSOR]; /* Temp, Pres, Hum & Gas */
     uint8_t nInputs = 0;
     /* Checks all the required sensor inputs, required for the BSEC library for the requested outputs */
@@ -366,6 +392,8 @@ bool Bsec2::processData(int64_t currTimeNs, const bme68xData &data)
  */
 bool Bsec2::beginCommon()
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     if (!bsecInstance)
     {
         /* allocate memory for the instance if not allocated */
@@ -396,6 +424,8 @@ bool Bsec2::beginCommon()
  */
 void Bsec2::setBme68xConfigForced(void)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     /* Set the filter, odr, temperature, pressure and humidity settings */
     sensor.setTPH(bmeConf.temperature_oversampling, bmeConf.pressure_oversampling, bmeConf.humidity_oversampling);
 
@@ -419,6 +449,8 @@ void Bsec2::setBme68xConfigForced(void)
  */
 void Bsec2::setBme68xConfigParallel(void)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     uint16_t sharedHeaterDur = 0;
 
     /* Set the filter, odr, temperature, pressure and humidity settings */

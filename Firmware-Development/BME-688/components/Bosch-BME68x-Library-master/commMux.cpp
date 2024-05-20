@@ -78,20 +78,16 @@ void IRAM_ATTR delayMicroseconds(uint32_t us)
 }
 /////----------------------microsecondDelay-------------------------
 
-static void setChipSelect(i2c_port_t wireobj, uint8_t mask);
-
 /**
  * @brief Function to configure the communication across sensors
  */
 commMux commMuxSetConfig(i2c_port_t wireobj, spi_device_handle_t &spiobj, uint8_t idx, commMux &comm)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
 	comm.select = ((0x01 << idx) ^ 0xFF);
 	comm.spiobj = &spiobj;
 	comm.wireobj = wireobj;
-
-	ESP_LOGI(TAG, "Selecting %d CS line on MUX IC", idx);
-	setChipSelect(comm.wireobj, comm.select);
-	ESP_LOGI(TAG, "Selection complete");
 
 	return comm;
 }
@@ -101,6 +97,8 @@ commMux commMuxSetConfig(i2c_port_t wireobj, spi_device_handle_t &spiobj, uint8_
  */
 void commMuxBegin(i2c_port_t wireobj, spi_device_handle_t &spiobj)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (I2C_EXPANDER_ADDR << 1) | I2C_MASTER_WRITE, true);
@@ -108,8 +106,11 @@ void commMuxBegin(i2c_port_t wireobj, spi_device_handle_t &spiobj)
 	i2c_master_write_byte(cmd, I2C_EXPANDER_CONFIG_REG_MASK, true);
 
 	i2c_master_stop(cmd);
-	if(i2c_master_cmd_begin(wireobj, cmd, (1000 /portTICK_PERIOD_MS)) != ESP_OK){
+	if(i2c_master_cmd_begin(wireobj, cmd, (100 /portTICK_PERIOD_MS)) != ESP_OK){
 		ESP_LOGE(TAG, "Initializing I2C Mux IC Failed.");
+	}
+	else{
+		ESP_LOGI(TAG, "Initializing I2C Mux IC Success.");
 	}
 
 	i2c_cmd_link_delete(cmd);
@@ -120,6 +121,15 @@ void commMuxBegin(i2c_port_t wireobj, spi_device_handle_t &spiobj)
  */
 static void setChipSelect(i2c_port_t wireobj, uint8_t mask)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
+	if(mask == I2C_EXPANDER_OUTPUT_DESELECT){
+		ESP_LOGD(TAG, "%s: Deselecting CS lines.", __func__);
+	}
+	else{
+		ESP_LOGD(TAG, "%s: Selecting CS line.", __func__);
+	}
+
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (I2C_EXPANDER_ADDR << 1) | I2C_MASTER_WRITE, true);
@@ -127,8 +137,11 @@ static void setChipSelect(i2c_port_t wireobj, uint8_t mask)
 	i2c_master_write_byte(cmd, mask, true);
 
 	i2c_master_stop(cmd);
-	if(i2c_master_cmd_begin(wireobj, cmd, (1000 /portTICK_PERIOD_MS)) != ESP_OK){
-		ESP_LOGE(TAG, "Selecting CS line on I2C Mux IC Failed.");
+	if(i2c_master_cmd_begin(wireobj, cmd, (100 /portTICK_PERIOD_MS)) != ESP_OK){
+		ESP_LOGE(TAG, "%s: Selecting CS line Failed.", __func__);
+	}
+	else{
+		ESP_LOGD(TAG, "%s: CS line operation complete.", __func__);
 	}
 
 	i2c_cmd_link_delete(cmd);
@@ -139,22 +152,31 @@ static void setChipSelect(i2c_port_t wireobj, uint8_t mask)
  */
 int8_t commMuxWrite(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
 	commMux *comm = (commMux*) intf_ptr;
-	// uint32_t i;
 
 	if (comm)
 	{
 		setChipSelect(comm->wireobj, comm->select);
 
+		uint8_t *buffer = (uint8_t *)malloc(length + 1);
+		if (buffer == NULL) {
+			ESP_LOGE(TAG, "%s: Failed to allocate memory for SPI transaction", __func__);
+			return 1;
+		}
+		buffer[0] = reg_addr & 0x7F;  // Clear the MSB for write operation
+    	memcpy(&buffer[1], reg_data, length);
+
 		spi_transaction_t t;
 		memset(&t, 0, sizeof(t));
 		t.length = 8 * (1 + length); // Command + Data
-		t.flags = SPI_TRANS_USE_TXDATA;
+		t.tx_buffer = buffer;
 
-		t.tx_data[0] = reg_addr;
-		memcpy(t.tx_data + 1, reg_data, length);
-
-		spi_device_transmit(*comm->spiobj, &t);
+		if(spi_device_transmit(*comm->spiobj, &t) != ESP_OK){
+			ESP_LOGE(TAG,"%s: Communication failure. Could not write register.", __func__);
+		}
+		free(buffer);
 
 		setChipSelect(comm->wireobj, I2C_EXPANDER_OUTPUT_DESELECT);
 
@@ -169,35 +191,44 @@ int8_t commMuxWrite(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, 
  */
 int8_t commMuxRead(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
 	commMux *comm = (commMux*) intf_ptr;
-	// uint32_t i;
 
 	if (comm)
 	{
 		setChipSelect(comm->wireobj, comm->select);
 
+		uint8_t *buffer = (uint8_t *)malloc(length + 1);
+		if (buffer == NULL) {
+			ESP_LOGE(TAG, "%s: Failed to allocate memory for SPI transaction", __func__);
+			return 1;
+		}
+		buffer[0] = reg_addr | 0x80;
+
 		spi_transaction_t t;
-		memset(&t, 0, sizeof(t));
-		t.length = 8 * (1 + length); // Command + Data
-		t.flags = SPI_TRANS_USE_TXDATA;
-		t.tx_data[0] = reg_addr | 0x80; // Set read bit
+		memset(&t, 0, sizeof(t));        // Zero out the transaction
+		t.length = 8 * (length + 1);     // Total data length in bits (address + data)
+		t.rxlength = 8 * (length + 1);   // Total receive length in bits
+		t.tx_buffer = buffer;            // Pointer to the address buffer
+		t.rx_buffer = buffer;            // Pointer to the data buffer
 
-		spi_device_transmit(*comm->spiobj, &t);
+		// Send the address and receive the data
+		if(spi_device_transmit(*comm->spiobj, &t) != ESP_OK){
+			ESP_LOGE(TAG,"%s: Communication failure. Could not target register.", __func__);
+			goto fault;
+		}
 
-		memset(&t, 0, sizeof(t));
-		// t.flags = 0;
-		t.flags = SPI_TRANS_USE_RXDATA;
-		t.length = 8 * length;
-		t.rxlength = 8 * length;
-		t.rx_buffer = reg_data;
-
-		spi_device_transmit(*comm->spiobj, &t);
+		memcpy(reg_data, &buffer[1], length);
+		free(buffer);
 
 		setChipSelect(comm->wireobj, I2C_EXPANDER_OUTPUT_DESELECT);
 
 		return 0;
 	}
 
+fault:
+	setChipSelect(comm->wireobj, I2C_EXPANDER_OUTPUT_DESELECT);
 	return 1;
 }
 
@@ -206,6 +237,8 @@ int8_t commMuxRead(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *i
  */
 void commMuxDelay(uint32_t period_us, void *intf_ptr)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
 	(void) intf_ptr;
 	delayMicroseconds(period_us);
 }

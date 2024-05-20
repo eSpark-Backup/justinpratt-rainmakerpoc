@@ -8,16 +8,20 @@
 
 /* Communication Interface's Defines */
 #define I2C_NUM             I2C_NUM_0                               //i2c port
-#define I2C_MASTER_FREQ_HZ  400000                                  //i2c communication frequency
+#define I2C_MASTER_FREQ_HZ  UINT32_C(400000)                                  //i2c communication frequency
 // #define I2C_ADDRESS         BME68X_I2C_ADDR_LOW                     //i2c address of BME688
 #define CONFIG_SDA_GPIO     GPIO_NUM_23
 #define CONFIG_SCL_GPIO     GPIO_NUM_22
 ////-----------------------------------
-#define SPI_COMM_SPEED      32000000
+#define SPI_COMM_SPEED      UINT32_C(8000000)                                 //32000000
+// #define CONFIG_MOSI_GPIO    GPIO_NUM_13
+// #define CONFIG_MISO_GPIO    GPIO_NUM_12
+// #define CONFIG_SCLK_GPIO    GPIO_NUM_14
+// #define CONFIG_CS_GPIO      GPIO_NUM_33
 #define CONFIG_MOSI_GPIO    GPIO_NUM_18
 #define CONFIG_MISO_GPIO    GPIO_NUM_19
 #define CONFIG_SCLK_GPIO    GPIO_NUM_5
-#define CONFIG_CS_GPIO      GPIO_NUM_33
+#define CONFIG_CS_GPIO      GPIO_NUM_3
 #define SPI_INTERFACE       SPI2_HOST
 
 
@@ -78,11 +82,11 @@ void app_main(void)
             .clk_speed = I2C_MASTER_FREQ_HZ,    },
 		.clk_flags = 0
 	};
+    ESP_ERROR_CHECK(i2c_param_config(I2C_NUM, &i2c_config));
+	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, i2c_config.mode, 0, 0, 0));
 	ESP_LOGI(TAG, "/* I2C INTERFACE */");
 	ESP_LOGI(TAG, "CONFIG_SDA_GPIO=%d",CONFIG_SDA_GPIO);
 	ESP_LOGI(TAG, "CONFIG_SCL_GPIO=%d",CONFIG_SCL_GPIO);
-    ESP_ERROR_CHECK(i2c_param_config(I2C_NUM, &i2c_config));
-	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM, i2c_config.mode, 0, 0, 0));
 
     //SPI interface
     spi_bus_config_t bus_cfg = {
@@ -133,10 +137,9 @@ void app_main(void)
     /* Communication interface set for all the 8 sensors in the development kit */
     for (uint8_t i = 0; i < DEV_KIT_SENSORS; i++) {
         commSetup[i] = commMuxSetConfig(I2C_NUM, spi, i, commSetup[i]);
-        // setChipSelect(I2C_NUM, commSetup[i].select);
         bme[i].begin(BME68X_SPI_INTF, commMuxRead, commMuxWrite, commMuxDelay, &commSetup[i]);
             if(bme[i].checkStatus()) {
-                ESP_LOGE(TAG, "Initializing sensor '%d' failed with error: %s", i, bme[i].statusString().c_str());
+                ESP_LOGE(TAG, "Initializing sensor \"%d\" failed with error: %s", i, bme[i].statusString().c_str());
                 errLeds();
             }
     }
@@ -222,7 +225,7 @@ void app_main(void)
 
             gpio_set_level(PANIC_LED, 1);
 
-            ESP_LOGI(TAG, "Readings: %s", logHeader.c_str());
+            printf("Readings: %s", logHeader.c_str());
             logHeader = "";
 
             gpio_set_level(PANIC_LED, 0);

@@ -39,6 +39,8 @@
 #include "bme68x.h"
 #include <stdio.h>
 
+static const char *TAG = "[bme68x]";
+
 /* This internal API is used to read the calibration coefficients */
 static int8_t get_calib_data(struct bme68x_dev *dev);
 
@@ -137,12 +139,14 @@ static int8_t analyze_sensor_data(const struct bme68x_data *data, uint8_t n_meas
 /*                                 Global API definitions                                 */
 /******************************************************************************************/
 
-/* @brief This API reads the chip-id of the sensor which is the first step to
+/*! @brief This API reads the chip-id of the sensor which is the first step to
 * verify the sensor and also calibrates the sensor
 * As this API is the entry point, call this API before using other APIs.
 */
 int8_t bme68x_init(struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+
     int8_t rslt;
 
     rslt = bme68x_soft_reset(dev);
@@ -161,12 +165,22 @@ int8_t bme68x_init(struct bme68x_dev *dev)
                     /* Get the Calibration data */
                     rslt = get_calib_data(dev);
                 }
+                else{
+                    ESP_LOGE(TAG, "%s: Failed with error %d.", __func__, rslt);
+                }
             }
             else
             {
                 rslt = BME68X_E_DEV_NOT_FOUND;
+                ESP_LOGE(TAG, "%s: Could not read chip_id, error %d.", __func__, rslt);
             }
         }
+        else{
+            ESP_LOGE(TAG, "%s: Failed with error %d.", __func__, rslt);
+        }
+    }
+    else{
+        ESP_LOGE(TAG, "%s: Failed with error %d.", __func__, rslt);
     }
 
     return rslt;
@@ -177,6 +191,8 @@ int8_t bme68x_init(struct bme68x_dev *dev)
  */
 int8_t bme68x_set_regs(const uint8_t *reg_addr, const uint8_t *reg_data, uint32_t len, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+
     int8_t rslt;
 
     /* Length of the temporary buffer is 2*(length of register)*/
@@ -213,17 +229,19 @@ int8_t bme68x_set_regs(const uint8_t *reg_addr, const uint8_t *reg_data, uint32_
                 if (dev->intf_rslt != 0)
                 {
                     rslt = BME68X_E_COM_FAIL;
+                    ESP_LOGE(TAG,"%s: Communication failure. Could not write interleaved array.", __func__);
                 }
             }
         }
         else
         {
             rslt = BME68X_E_INVALID_LENGTH;
+            ESP_LOGE(TAG, "%s: Invalid length.", __func__);
         }
     }
-    else
-    {
+    else{
         rslt = BME68X_E_NULL_PTR;
+        ESP_LOGE(TAG, "%s: null_ptr_check Failed with error %d.", __func__, rslt);
     }
 
     return rslt;
@@ -234,6 +252,8 @@ int8_t bme68x_set_regs(const uint8_t *reg_addr, const uint8_t *reg_data, uint32_
  */
 int8_t bme68x_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+
     int8_t rslt;
 
     /* Check for null pointer in the device structure*/
@@ -248,17 +268,22 @@ int8_t bme68x_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, struct
             {
                 reg_addr = reg_addr | BME68X_SPI_RD_MSK;
             }
+            else{
+                ESP_LOGE(TAG,"%s: set_mem_page failed.", __func__);
+            }
         }
 
         dev->intf_rslt = dev->read(reg_addr, reg_data, len, dev->intf_ptr);
         if (dev->intf_rslt != 0)
         {
             rslt = BME68X_E_COM_FAIL;
+            ESP_LOGE(TAG,"%s: Communication failure. Could not write interleaved array.", __func__);
         }
     }
     else
     {
         rslt = BME68X_E_NULL_PTR;
+        ESP_LOGE(TAG, "%s: null_ptr_check Failed with error %d.", __func__, rslt);
     }
 
     return rslt;
@@ -269,6 +294,8 @@ int8_t bme68x_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, struct
  */
 int8_t bme68x_soft_reset(struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+
     int8_t rslt;
     uint8_t reg_addr = BME68X_REG_SOFT_RESET;
 
@@ -299,7 +326,16 @@ int8_t bme68x_soft_reset(struct bme68x_dev *dev)
                     rslt = get_mem_page(dev);
                 }
             }
+            else{
+                ESP_LOGE(TAG,"%s: bme68x_set_regs failed.", __func__);
+            }
         }
+        else{
+            ESP_LOGE(TAG,"%s: get_mem_page failed.", __func__);
+        }
+    }
+    else{
+        ESP_LOGE(TAG, "%s: null_ptr_check Failed with error %d.", __func__, rslt);
     }
 
     return rslt;
@@ -310,6 +346,8 @@ int8_t bme68x_soft_reset(struct bme68x_dev *dev)
  */
 int8_t bme68x_set_conf(struct bme68x_conf *conf, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+
     int8_t rslt;
     uint8_t odr20 = 0, odr3 = 1;
     uint8_t current_op_mode;
@@ -394,6 +432,8 @@ int8_t bme68x_set_conf(struct bme68x_conf *conf, struct bme68x_dev *dev)
  */
 int8_t bme68x_get_conf(struct bme68x_conf *conf, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+
     int8_t rslt;
 
     /* starting address of the register array for burst read*/
@@ -429,6 +469,8 @@ int8_t bme68x_get_conf(struct bme68x_conf *conf, struct bme68x_dev *dev)
  */
 int8_t bme68x_set_op_mode(const uint8_t op_mode, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t tmp_pow_mode;
     uint8_t pow_mode = 0;
@@ -449,6 +491,9 @@ int8_t bme68x_set_op_mode(const uint8_t op_mode, struct bme68x_dev *dev)
                 dev->delay_us(BME68X_PERIOD_POLL, dev->intf_ptr);
             }
         }
+        else{
+            ESP_LOGE(TAG,"%s: bme68x_get_regs failed.", __func__);
+        }
     } while ((pow_mode != BME68X_SLEEP_MODE) && (rslt == BME68X_OK));
 
     /* Already in sleep */
@@ -466,6 +511,8 @@ int8_t bme68x_set_op_mode(const uint8_t op_mode, struct bme68x_dev *dev)
  */
 int8_t bme68x_get_op_mode(uint8_t *op_mode, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t mode;
 
@@ -489,6 +536,8 @@ int8_t bme68x_get_op_mode(uint8_t *op_mode, struct bme68x_dev *dev)
  */
 uint32_t bme68x_get_meas_dur(const uint8_t op_mode, struct bme68x_conf *conf, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint32_t meas_dur = 0; /* Calculate in us */
     uint32_t meas_cycles;
@@ -539,6 +588,8 @@ uint32_t bme68x_get_meas_dur(const uint8_t op_mode, struct bme68x_conf *conf, st
  */
 int8_t bme68x_get_data(uint8_t op_mode, struct bme68x_data *data, uint8_t *n_data, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t i = 0, j = 0, new_fields = 0;
     struct bme68x_data *field_ptr[3] = { 0 };
@@ -629,6 +680,8 @@ int8_t bme68x_get_data(uint8_t op_mode, struct bme68x_data *data, uint8_t *n_dat
  */
 int8_t bme68x_set_heatr_conf(uint8_t op_mode, const struct bme68x_heatr_conf *conf, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t nb_conv = 0;
     uint8_t hctrl, run_gas = 0;
@@ -686,6 +739,8 @@ int8_t bme68x_set_heatr_conf(uint8_t op_mode, const struct bme68x_heatr_conf *co
  */
 int8_t bme68x_get_heatr_conf(const struct bme68x_heatr_conf *conf, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t data_array[10] = { 0 };
     uint8_t i;
@@ -724,6 +779,8 @@ int8_t bme68x_get_heatr_conf(const struct bme68x_heatr_conf *conf, struct bme68x
  */
 int8_t bme68x_selftest_check(const struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t n_fields;
     uint8_t i = 0;
@@ -1006,6 +1063,8 @@ static uint8_t calc_res_heat(uint16_t temp, const struct bme68x_dev *dev)
 /* @brief This internal API is used to calculate the temperature value. */
 static float calc_temperature(uint32_t temp_adc, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     float var1;
     float var2;
     float calc_temp;
@@ -1030,6 +1089,8 @@ static float calc_temperature(uint32_t temp_adc, struct bme68x_dev *dev)
 /* @brief This internal API is used to calculate the pressure value. */
 static float calc_pressure(uint32_t pres_adc, const struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     float var1;
     float var2;
     float var3;
@@ -1063,6 +1124,8 @@ static float calc_pressure(uint32_t pres_adc, const struct bme68x_dev *dev)
 /* This internal API is used to calculate the humidity in integer */
 static float calc_humidity(uint16_t hum_adc, const struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     float calc_hum;
     float var1;
     float var2;
@@ -1096,6 +1159,8 @@ static float calc_humidity(uint16_t hum_adc, const struct bme68x_dev *dev)
 /* This internal API is used to calculate the gas resistance low value in float */
 static float calc_gas_resistance_low(uint16_t gas_res_adc, uint8_t gas_range, const struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     float calc_gas_res;
     float var1;
     float var2;
@@ -1120,6 +1185,8 @@ static float calc_gas_resistance_low(uint16_t gas_res_adc, uint8_t gas_range, co
 /* This internal API is used to calculate the gas resistance value in float */
 static float calc_gas_resistance_high(uint16_t gas_res_adc, uint8_t gas_range)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     float calc_gas_res;
     uint32_t var1 = UINT32_C(262144) >> gas_range;
     int32_t var2 = (int32_t)gas_res_adc - INT32_C(512);
@@ -1135,6 +1202,8 @@ static float calc_gas_resistance_high(uint16_t gas_res_adc, uint8_t gas_range)
 /* This internal API is used to calculate the heater resistance value */
 static uint8_t calc_res_heat(uint16_t temp, const struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     float var1;
     float var2;
     float var3;
@@ -1166,6 +1235,8 @@ static uint8_t calc_res_heat(uint16_t temp, const struct bme68x_dev *dev)
 /* This internal API is used to calculate the gas wait */
 static uint8_t calc_gas_wait(uint16_t dur)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     uint8_t factor = 0;
     uint8_t durval;
 
@@ -1190,6 +1261,8 @@ static uint8_t calc_gas_wait(uint16_t dur)
 /* This internal API is used to read a single data of the sensor */
 static int8_t read_field_data(uint8_t index, struct bme68x_data *data, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt = BME68X_OK;
     uint8_t buff[BME68X_LEN_FIELD] = { 0 };
     uint8_t gas_range_l, gas_range_h;
@@ -1279,6 +1352,8 @@ static int8_t read_field_data(uint8_t index, struct bme68x_data *data, struct bm
 /* This internal API is used to read all data fields of the sensor */
 static int8_t read_all_field_data(struct bme68x_data * const data[], struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt = BME68X_OK;
     uint8_t buff[BME68X_LEN_FIELD * 3] = { 0 };
     uint8_t gas_range_l, gas_range_h;
@@ -1357,6 +1432,8 @@ static int8_t read_all_field_data(struct bme68x_data * const data[], struct bme6
 /* This internal API is used to switch between SPI memory pages */
 static int8_t set_mem_page(uint8_t reg_addr, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t reg;
     uint8_t mem_page;
@@ -1381,6 +1458,7 @@ static int8_t set_mem_page(uint8_t reg_addr, struct bme68x_dev *dev)
             if (dev->intf_rslt != 0)
             {
                 rslt = BME68X_E_COM_FAIL;
+                ESP_LOGE(TAG,"%s: Communication failure. Could not read reg.", __func__);
             }
 
             if (rslt == BME68X_OK)
@@ -1388,9 +1466,9 @@ static int8_t set_mem_page(uint8_t reg_addr, struct bme68x_dev *dev)
                 reg = reg & (~BME68X_MEM_PAGE_MSK);
                 reg = reg | (dev->mem_page & BME68X_MEM_PAGE_MSK);
                 dev->intf_rslt = dev->write(BME68X_REG_MEM_PAGE & BME68X_SPI_WR_MSK, &reg, 1, dev->intf_ptr);
-                if (dev->intf_rslt != 0)
-                {
+                if (dev->intf_rslt != 0){
                     rslt = BME68X_E_COM_FAIL;
+                    ESP_LOGE(TAG,"%s: Communication failure. Could not write reg.", __func__);
                 }
             }
         }
@@ -1402,6 +1480,8 @@ static int8_t set_mem_page(uint8_t reg_addr, struct bme68x_dev *dev)
 /* This internal API is used to get the current SPI memory page */
 static int8_t get_mem_page(struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t reg;
 
@@ -1419,6 +1499,9 @@ static int8_t get_mem_page(struct bme68x_dev *dev)
             dev->mem_page = reg & BME68X_MEM_PAGE_MSK;
         }
     }
+    else{
+        ESP_LOGE(TAG, "%s: null_ptr_check Failed.", __func__);
+    }
 
     return rslt;
 }
@@ -1426,6 +1509,8 @@ static int8_t get_mem_page(struct bme68x_dev *dev)
 /* This internal API is used to limit the max value of a parameter */
 static int8_t boundary_check(uint8_t *value, uint8_t max, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
 
     rslt = null_ptr_check(dev);
@@ -1450,12 +1535,15 @@ static int8_t boundary_check(uint8_t *value, uint8_t max, struct bme68x_dev *dev
 /* This internal API is used to check the bme68x_dev for null pointers */
 static int8_t null_ptr_check(const struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt = BME68X_OK;
 
     if ((dev == NULL) || (dev->read == NULL) || (dev->write == NULL) || (dev->delay_us == NULL))
     {
         /* Device structure pointer is not valid */
         rslt = BME68X_E_NULL_PTR;
+        ESP_LOGE(TAG, "Sensor handler not initialized properly, One of the field is set to NULL");
     }
 
     return rslt;
@@ -1464,6 +1552,8 @@ static int8_t null_ptr_check(const struct bme68x_dev *dev)
 /* This internal API is used to set heater configurations */
 static int8_t set_conf(const struct bme68x_heatr_conf *conf, uint8_t op_mode, uint8_t *nb_conv, struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt = BME68X_OK;
     uint8_t i;
     uint8_t shared_dur;
@@ -1552,6 +1642,8 @@ static int8_t set_conf(const struct bme68x_heatr_conf *conf, uint8_t op_mode, ui
  * shared heater duration */
 static uint8_t calc_heatr_dur_shared(uint16_t dur)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     uint8_t factor = 0;
     uint8_t heatdurval;
 
@@ -1578,6 +1670,8 @@ static uint8_t calc_heatr_dur_shared(uint16_t dur)
 /* This internal API is used sort the sensor data */
 static void sort_sensor_data(uint8_t low_index, uint8_t high_index, struct bme68x_data *field[])
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int16_t meas_index1;
     int16_t meas_index2;
 
@@ -1701,6 +1795,8 @@ static void sort_sensor_data(uint8_t low_index, uint8_t high_index, struct bme68
 /* This internal API is used sort the sensor data */
 static void swap_fields(uint8_t index1, uint8_t index2, struct bme68x_data *field[])
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     struct bme68x_data *temp;
 
     temp = field[index1];
@@ -1711,6 +1807,8 @@ static void swap_fields(uint8_t index1, uint8_t index2, struct bme68x_data *fiel
 /* This Function is to analyze the sensor data */
 static int8_t analyze_sensor_data(const struct bme68x_data *data, uint8_t n_meas)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt = BME68X_OK;
     uint8_t self_test_failed = 0, i;
     uint32_t cent_res = 0;
@@ -1759,6 +1857,8 @@ static int8_t analyze_sensor_data(const struct bme68x_data *data, uint8_t n_meas
 /* This internal API is used to read the calibration coefficients */
 static int8_t get_calib_data(struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t coeff_array[BME68X_LEN_COEFF_ALL];
 
@@ -1833,6 +1933,8 @@ static int8_t get_calib_data(struct bme68x_dev *dev)
 /* This internal API is used to read variant ID information from the register */
 static int8_t read_variant_id(struct bme68x_dev *dev)
 {
+    ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
+    
     int8_t rslt;
     uint8_t reg_data = 0;
 
@@ -1842,6 +1944,9 @@ static int8_t read_variant_id(struct bme68x_dev *dev)
     if (rslt == BME68X_OK)
     {
         dev->variant_id = reg_data;
+    }
+    else{
+        ESP_LOGE(TAG, "%s: Failed with error %d.", __func__, rslt);
     }
 
     return rslt;

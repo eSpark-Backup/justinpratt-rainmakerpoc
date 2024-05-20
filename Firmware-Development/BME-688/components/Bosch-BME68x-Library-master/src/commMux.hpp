@@ -100,6 +100,8 @@ int8_t commMuxRead(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *i
  */
 void commMuxDelay(uint32_t period_us, void *intf_ptr);
 
+static void setChipSelect(i2c_port_t wireobj, uint8_t mask);
+
 #endif /* COMM_MUX_H */
 
 #ifdef __cplusplus

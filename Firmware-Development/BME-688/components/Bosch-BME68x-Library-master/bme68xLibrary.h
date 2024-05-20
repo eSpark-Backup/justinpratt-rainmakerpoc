@@ -44,6 +44,7 @@
 #include <hal/spi_types.h>
 #include <driver/i2c.h>
 #include "esp_timer.h"
+#include "esp_log.h"
 #include <stdio.h>
 #include "string"
 
