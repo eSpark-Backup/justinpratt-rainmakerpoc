@@ -6,12 +6,11 @@
 #include "esp_log.h"
 #include "strings.h"
 #include <stdio.h>
-// #include "app_priv.h"
 #include <bsec2.hpp>
 #include <commMux.hpp>
 
 
-static int g_gas_ppm = 0;//DEFAULT_GAS_PPM;
+extern float g_gas_ppm;// = 0;      //DEFAULT_GAS_PPM;
 
 #ifdef __cplusplus
 extern "C" {

@@ -123,16 +123,17 @@ void app_main()
         vTaskDelay(5000/portTICK_PERIOD_MS);
         abort();
     }
-
-    xTaskCreatePinnedToCore(
-        ledBlink,   // Task function
-        "ledBlink",    // Name of the task
-        512,            // Stack size in bytes
-        NULL,            // Task parameter
-        5,               // Priority of the task
-        NULL,            // Task handle
-        1                // Core ID (0 or 1)
-    );
+    if(xTaskCreatePinnedToCore(
+        ledBlink,           // Task function
+        "ledBlink",         // Name of the task
+        2048,               // Stack size in bytes
+        NULL,               // Task parameter
+        5,                  // Priority of the task
+        NULL,               // Task handle
+        1                   // Core ID (0 or 1)
+    )   != pdPASS ){
+        ESP_LOGE(TAG, "%s: Could not start ledBlink task!!!", __func__);
+    }
 }
 
 #ifdef __cplusplus

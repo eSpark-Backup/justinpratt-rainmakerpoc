@@ -273,7 +273,9 @@ int8_t bme68x_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, struct
             }
         }
 
+        ESP_LOGD(TAG, "%s: reading from device.", __func__);
         dev->intf_rslt = dev->read(reg_addr, reg_data, len, dev->intf_ptr);
+        ESP_LOGD(TAG, "%s: read from device.", __func__);
         if (dev->intf_rslt != 0)
         {
             rslt = BME68X_E_COM_FAIL;

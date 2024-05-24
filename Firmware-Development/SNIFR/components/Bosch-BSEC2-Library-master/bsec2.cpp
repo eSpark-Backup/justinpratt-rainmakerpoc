@@ -72,8 +72,10 @@ bool Bsec2::begin(bme68xIntf intf, bme68x_read_fptr_t read, bme68x_write_fptr_t 
     
     sensor.begin(intf, read, write, idleTask, intfPtr);
 
-    if (sensor.checkStatus() == BME68X_ERROR)
+    if (sensor.checkStatus() == BME68X_ERROR){
+        ESP_LOGE(TAG, "%s: Error occured.", __func__);
         return false;
+    }
 
     return beginCommon();
 }
@@ -156,16 +158,18 @@ bool Bsec2::run(void)
         switch (bmeConf.op_mode)
         {
         case BME68X_FORCED_MODE:
+            ESP_LOGI(TAG, "%s: using BME68X_FORCED_MODE.", __func__);
             setBme68xConfigForced();
             break;
         case BME68X_PARALLEL_MODE:
+            ESP_LOGI(TAG, "%s: using BME68X_PARALLEL_MODE.", __func__);
             if (opMode != bmeConf.op_mode)
             {
                 setBme68xConfigParallel();
             }
             break;
-
         case BME68X_SLEEP_MODE:
+            ESP_LOGI(TAG, "%s: using BME68X_SLEEP_MODE.", __func__);
             if (opMode != bmeConf.op_mode)
             {
                 sensor.setOpMode(BME68X_SLEEP_MODE);
@@ -197,9 +201,7 @@ bool Bsec2::run(void)
                     }
                 } while (nFieldsLeft);
             }
-
         }
-
     }
     return true;
 }
@@ -416,6 +418,7 @@ bool Bsec2::beginCommon()
     memset(&bmeConf, 0, sizeof(bmeConf));
     memset(&outputs, 0, sizeof(outputs));
 
+    ESP_LOGI(TAG, "%s: No errors.", __func__);
     return true;
 }
 
@@ -427,7 +430,9 @@ void Bsec2::setBme68xConfigForced(void)
     ESP_LOGD(TAG, "%s: was called by %p", __func__, __builtin_return_address(0));
     
     /* Set the filter, odr, temperature, pressure and humidity settings */
+    ESP_LOGD(TAG, "%s: Setting TPH configuration.", __func__);
     sensor.setTPH(bmeConf.temperature_oversampling, bmeConf.pressure_oversampling, bmeConf.humidity_oversampling);
+    ESP_LOGD(TAG, "%s: TPH configured succesfully.", __func__);
 
     if (sensor.checkStatus() == BME68X_ERROR)
         return;
@@ -454,7 +459,9 @@ void Bsec2::setBme68xConfigParallel(void)
     uint16_t sharedHeaterDur = 0;
 
     /* Set the filter, odr, temperature, pressure and humidity settings */
+    ESP_LOGD(TAG, "%s: Setting TPH configuration.", __func__);
     sensor.setTPH(bmeConf.temperature_oversampling, bmeConf.pressure_oversampling, bmeConf.humidity_oversampling);
+    ESP_LOGD(TAG, "%s: TPH configured succesfully.", __func__);
 
     if (sensor.checkStatus() == BME68X_ERROR)
         return;

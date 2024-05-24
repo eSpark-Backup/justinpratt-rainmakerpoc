@@ -1,5 +1,5 @@
 # Bosch BME68x Library
-This Arduino library wraps the [BME68x Sensor API](https://github.com/BoschSensortec/BME68x-Sensor-API) to provide a simpler experience to use the BME680 or BME688 Sensors from Bosch Sensortec.
+This Arduino library was ported to ESP-IDF and source is present on [BME68x Sensor API](https://github.com/BoschSensortec/BME68x-Sensor-API) to provide a simpler experience to use the BME680 or BME688 Sensors from Bosch Sensortec.
 
 ## Supported sensors
 

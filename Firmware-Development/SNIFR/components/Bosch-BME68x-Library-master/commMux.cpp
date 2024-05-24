@@ -204,26 +204,27 @@ int8_t commMuxRead(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *i
 		setChipSelect(comm->wireobj, comm->select);
 
 		uint8_t *buffer = (uint8_t *)malloc(length + 1);
-		if (buffer == NULL) {
-			ESP_LOGE(TAG, "%s: Failed to allocate memory for SPI transaction", __func__);
-			return 1;
-		}
 		buffer[0] = reg_addr | 0x80;
 
 		spi_transaction_t t;
 		memset(&t, 0, sizeof(t));        // Zero out the transaction
 		t.length = 8 * (length + 1);     // Total data length in bits (address + data)
-		t.rxlength = 8 * (length + 1);   // Total receive length in bits
+		t.rxlength = 8 * length;   // Total receive length in bits
 		t.tx_buffer = buffer;            // Pointer to the address buffer
 		t.rx_buffer = buffer;            // Pointer to the data buffer
 
 		// Send the address and receive the data
-		if(spi_device_transmit(*comm->spiobj, &t) != ESP_OK){
+		if(comm->spiobj == NULL){
+
+			ESP_LOGE(TAG,"%s: comm->spiobj is NULL.", __func__);
+		}
+		else if(spi_device_transmit(*comm->spiobj, &t) != ESP_OK){
 			ESP_LOGE(TAG,"%s: Communication failure. Could not target register.", __func__);
 			goto fault;
 		}
 
 		memcpy(reg_data, &buffer[1], length);
+		// buffer = NULL;
 		free(buffer);
 
 		setChipSelect(comm->wireobj, I2C_EXPANDER_OUTPUT_DESELECT);

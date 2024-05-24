@@ -1,5 +1,6 @@
 #include "BME688.h"
 #include "esp_log.h"
+#include "esp_system.h"
 
 /* Communication Interface's Defines */
 #define I2C_NUM             I2C_NUM_0                               //i2c port
@@ -28,6 +29,7 @@ Bsec2 envSensor[DEV_KIT_SENSORS];
 commMux commSetup[DEV_KIT_SENSORS];
 uint8_t bsecMemBlock[DEV_KIT_SENSORS][BSEC_INSTANCE_SIZE];
 uint8_t sensor = 0;
+spi_device_handle_t spi;
 
 /* Helper functions declarations */
 /**
@@ -37,8 +39,10 @@ void ledBlink(void *pvParameter)
 {
     while(1)
     {
+        // ESP_LOGW(TAG, "Free heap size %lu", esp_get_free_heap_size());
         gpio_set_level(PANIC_LED, 1);
         vTaskDelay((ERROR_DUR*3)/portTICK_PERIOD_MS);
+        // ESP_LOGW(TAG, "Free heap size %lu", esp_get_free_heap_size());
         gpio_set_level(PANIC_LED, 0);
         vTaskDelay(ERROR_DUR/portTICK_PERIOD_MS);
     }
@@ -87,6 +91,7 @@ void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bse
                 break;
             case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
                 g_gas_ppm = output.signal;
+                ESP_LOGI(TAG, "\tBSEC_OUTPUT_BREATH_VOC_EQUIVALENT in status = %0.3f", output.signal);
                 break;
             default:
                 break;
@@ -100,7 +105,6 @@ esp_err_t checkBsecStatus(Bsec2 bsec)
     {
         ESP_LOGE(TAG, "%s: BSEC error code : %d", __func__, bsec.status);
         return ESP_FAIL;
-        // errLeds(); /* Halt in case of failure */
     }
     else if (bsec.status > BSEC_OK)
     {
@@ -111,12 +115,13 @@ esp_err_t checkBsecStatus(Bsec2 bsec)
     {
         ESP_LOGE(TAG, "%s: BME68X error code : %d", __func__, bsec.sensor.status);
         return ESP_FAIL;
-        // errLeds(); /* Halt in case of failure */
     }
     else if (bsec.sensor.status > BME68X_OK)
     {
         ESP_LOGW(TAG, "%s: BME68X warning code : %d", __func__, bsec.sensor.status);
     }
+
+    ESP_LOGI(TAG, "%s: Status OK.", __func__);
     return ESP_OK;
 }
 
@@ -175,7 +180,6 @@ esp_err_t BME688Init(void)
         .pre_cb = nullptr,
         .post_cb = nullptr,
     };
-    spi_device_handle_t spi;
     spi_host_device_t spi_host = (spi_host_device_t)SPI_INTERFACE; //SPI2_HOST;
     ESP_ERROR_CHECK(spi_bus_initialize(spi_host, &bus_cfg, SPI_DMA_CH_AUTO));
     ESP_ERROR_CHECK(spi_bus_add_device(spi_host, &dev_cfg, &spi));
@@ -208,25 +212,22 @@ esp_err_t BME688Init(void)
         envSensor[i].allocateMemory(bsecMemBlock[i]);
         if (!envSensor[i].begin(BME68X_SPI_INTF, commMuxRead, commMuxWrite, commMuxDelay, &commSetup[i]))
         {
+            //run if errors were encountered while running envSensor[i].begin()
             if(checkBsecStatus (envSensor[i]) != ESP_OK){
                 ESP_LOGW(TAG, "%s: Error encountered while setting up DevKit Sensor %d", __func__, i);
                 return ESP_FAIL;
             }
         }
-        else{
-            return false;
-        }
+
         if (!envSensor[i].updateSubscription(sensorList, ARRAY_LEN(sensorList), BSEC_SAMPLE_RATE_ULP))
         {
-            // checkBsecStatus (envSensor[i]);
             if(checkBsecStatus (envSensor[i]) != ESP_OK){
                 ESP_LOGW(TAG, "%s: Error encountered while setting up DevKit Sensor %d's subscription.", __func__, i);
                 return ESP_FAIL;
             }
         }
-        // if (stats){
+
         envSensor[i].attachCallback(newDataCallback);
-        // }
     }
     ESP_LOGI(TAG, "BSEC library version %d.%d.%d.%d"
             , envSensor[0].version.major
@@ -237,9 +238,7 @@ esp_err_t BME688Init(void)
     return ESP_OK;
 }
 
-// void BME688Run(TimerHandle_t handle){
 esp_err_t BME688Run(void){
-    // while(1){
         for (sensor = 0; sensor < DEV_KIT_SENSORS; sensor++)
         {
             if (!envSensor[sensor].run())
@@ -248,10 +247,12 @@ esp_err_t BME688Run(void){
                     return ESP_FAIL;
                 }
             }
+            else{
+                return ESP_FAIL;
+            }
             vTaskDelay(10 /portTICK_PERIOD_MS);
         }
         return ESP_OK;
-    // }
 }
 
 #ifdef __cplusplus

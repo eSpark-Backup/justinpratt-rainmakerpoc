@@ -1,11 +1,3 @@
-/*
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
-
 #include <sdkconfig.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
@@ -16,7 +8,6 @@
 #include <esp_rmaker_standard_params.h>
 
 #include <app_reset.h>
-// #include <ws2812_led.h>
 #include "app_priv.h"
 #include "BME688.h"
 
@@ -26,19 +17,13 @@
 /* This is the GPIO on which the power will be set */
 #define OUTPUT_GPIO    CONFIG_EXAMPLE_OUTPUT_GPIO
 
-/* These values correspoind to H,S,V = 120,100,10 */
-#define DEFAULT_RED     0
-#define DEFAULT_GREEN   25
-#define DEFAULT_BLUE    0
-
 #define WIFI_RESET_BUTTON_TIMEOUT       3
 #define FACTORY_RESET_BUTTON_TIMEOUT    10
 
 static const char *TAG = "[app_driver]";
 
 static bool g_power_state = DEFAULT_SWITCH_POWER;
-// static float g_temperature = DEFAULT_TEMPERATURE;
-// static int g_gas_ppm = DEFAULT_GAS_PPM;
+float g_gas_ppm = DEFAULT_GAS_PPM;
 static TimerHandle_t sensor_timer;
 
 #ifdef __cplusplus
@@ -47,7 +32,8 @@ extern "C" {
 
 static void app_sensor_update(TimerHandle_t handle)
 {
-    if(BME688Run()){
+    if(BME688Run() == ESP_OK){
+        ESP_LOGI(TAG, "%s: g_gas_ppm = %f.", __func__, g_gas_ppm);
         esp_rmaker_param_update_and_report(
                     esp_rmaker_device_get_param_by_type(gas_sensor_device, ESP_RMAKER_PARAM_GAS),
                     esp_rmaker_float(g_gas_ppm));
@@ -61,12 +47,9 @@ float app_get_current_gas_value()
 
 esp_err_t app_sensor_init(void)
 {
-    // g_temperature = DEFAULT_TEMPERATURE;
     g_gas_ppm = DEFAULT_GAS_PPM;
     if(BME688Init() == ESP_OK){
         ESP_LOGI(TAG, "%s: Creating timer for BME688Run.", __func__);
-        // sensor_timer = xTimerCreate("BME688Run", (REPORTING_PERIOD * 1000) / portTICK_PERIOD_MS,
-        //                         pdTRUE, NULL, BME688Run);
         sensor_timer = xTimerCreate("app_sensor_update", (REPORTING_PERIOD * 1000) / portTICK_PERIOD_MS,
                                 pdTRUE, NULL, app_sensor_update);
     }

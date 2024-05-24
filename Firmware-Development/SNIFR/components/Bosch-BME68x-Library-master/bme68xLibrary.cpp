@@ -303,7 +303,9 @@ void Bme68x::getTPH(uint8_t &osHum, uint8_t &osTemp, uint8_t &osPres)
  */
 void Bme68x::setTPH(uint8_t osTemp, uint8_t osPres, uint8_t osHum)
 {
+	ESP_LOGD(TAG, "%s: running bme68x_get_conf.", __func__);
 	status = bme68x_get_conf(&conf, &bme6);
+	ESP_LOGD(TAG, "%s: bme68x_get_conf succesfull.", __func__);
 
 	if (status == BME68X_OK)
 	{
@@ -311,7 +313,9 @@ void Bme68x::setTPH(uint8_t osTemp, uint8_t osPres, uint8_t osHum)
 		conf.os_temp = osTemp;
 		conf.os_pres = osPres;
 
+		ESP_LOGD(TAG, "%s: running bme68x_set_conf.", __func__);
 		status = bme68x_set_conf(&conf, &bme6);
+		ESP_LOGD(TAG, "%s: bme68x_set_conf succesfull.", __func__);
 	}
 }
 
@@ -388,7 +392,6 @@ void Bme68x::setHeaterProf(uint16_t *temp, uint16_t *dur, uint8_t profileLen)
 	heatrConf.profile_len = profileLen;
 
 	status = bme68x_set_heatr_conf(BME68X_SEQUENTIAL_MODE, &heatrConf, &bme6);
-
 }
 
 /**
@@ -628,7 +631,7 @@ int8_t bme68xSpiRead(uint8_t regAddr, uint8_t *regData, uint32_t length, void *i
             spi_transaction_t t;
             memset(&t, 0, sizeof(t));
             t.length = 8 * (1 + length); // Command + Data
-            t.rxlength = 8 * (1 + length);
+            t.rxlength = 8 * length;
 			t.tx_buffer = buffer;            // Pointer to the address buffer
 			t.rx_buffer = buffer;            // Pointer to the data buffer
 

@@ -11,7 +11,7 @@
 
 #define DEFAULT_SWITCH_POWER        true
 #define DEFAULT_GAS_PPM             0
-#define REPORTING_PERIOD            30//360 /* Seconds */
+#define REPORTING_PERIOD            60 /* Seconds */
 
 extern esp_rmaker_device_t *switch_device;
 extern esp_rmaker_device_t *gas_sensor_device;
