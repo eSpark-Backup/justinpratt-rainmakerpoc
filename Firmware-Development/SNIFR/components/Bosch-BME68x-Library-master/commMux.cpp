@@ -209,7 +209,7 @@ int8_t commMuxRead(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *i
 		spi_transaction_t t;
 		memset(&t, 0, sizeof(t));        // Zero out the transaction
 		t.length = 8 * (length + 1);     // Total data length in bits (address + data)
-		t.rxlength = 8 * length;   // Total receive length in bits
+		t.rxlength = 8 * length;   		 // Total receive length in bits
 		t.tx_buffer = buffer;            // Pointer to the address buffer
 		t.rx_buffer = buffer;            // Pointer to the data buffer
 

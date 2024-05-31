@@ -16,7 +16,7 @@ Before you begin, make sure you have the following:
 
 
    - `bootloader.bin` at address `0x1000`
-   - `partition.bin` at address `0x8000`
+   - `partition-table.bin` at address `0x8000`
    - `SNIFR.bin` at address `0x20000`
 
 ### Steps
@@ -46,7 +46,7 @@ Configure the Flash Download Tool settings as follows:
 
 Click the "ESP32 DownloadTool" button to load the firmware. Select the firmware files with the appropriate addresses:
    - `bootloader.bin` at address `0x1000`
-   - `partition.bin` at address `0x8000`
+   - `partition-table.bin` at address `0x8000`
    - `SNIFR.bin` at address `0x20000`
 
 

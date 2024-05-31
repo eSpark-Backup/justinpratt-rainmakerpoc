@@ -17,7 +17,7 @@
 
 
 /* Macros used */
-#define PANIC_LED           GPIO_NUM_13                             //GPIO_NUM_2 on esp32, GPIO_NUM_13 on huzzah32
+#define PANIC_LED           GPIO_NUM_13                         //GPIO_NUM_2 on esp32, GPIO_NUM_13 on huzzah32
 #define ERROR_DUR           1000
 #define DEV_KIT_SENSORS     1                   //8             //using only one sensor for reporting to rainmaker
 #define MEAS_DUR            140
@@ -91,7 +91,7 @@ void newDataCallback(const bme68xData data, const bsecOutputs outputs, Bsec2 bse
                 break;
             case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
                 g_gas_ppm = output.signal;
-                ESP_LOGI(TAG, "\tBSEC_OUTPUT_BREATH_VOC_EQUIVALENT in status = %0.3f", output.signal);
+                ESP_LOGI(TAG, "\tBSEC_OUTPUT_BREATH_VOC_EQUIVALENT in status = %0.3f", g_gas_ppm);
                 break;
             default:
                 break;
@@ -246,9 +246,6 @@ esp_err_t BME688Run(void){
                 if(checkBsecStatus(envSensor[sensor]) != ESP_OK){
                     return ESP_FAIL;
                 }
-            }
-            else{
-                return ESP_FAIL;
             }
             vTaskDelay(10 /portTICK_PERIOD_MS);
         }

@@ -30,14 +30,14 @@ Supported platforms
 
 Available binaries for download:
 
-| Platform | Compiler | TYPE |
-|----------|----------|------|
-| Cortex-ARM | GCC | Cortex-M0+, M3, M4, M4_FPU, M33, M33_FPU |
-| ESP8266 | xtensa-lx106-elf-gcc | ESP8266 |
-| ESP32 | xtensa-esp32-elf-gcc | ESP32 |
-| ESP32 | xtensa-esp32s2-elf-gcc | ESP32-S2 |
-| ESP32 | xtensa-esp32s3-elf-gcc | ESP32-S3 |
-| ESP32 | riscv32-esp-elf-gcc | ESP32-C3 |
+| Platform    | Compiler 			 	| TYPE 										|
+|-------------|-------------------------|-------------------------------------------|
+| Cortex-ARM  | GCC 				 	| Cortex-M0+, M3, M4, M4_FPU, M33, M33_FPU  |
+| ESP8266 	  | xtensa-lx106-elf-gcc 	| ESP8266 									|
+| ESP32       | xtensa-esp32-elf-gcc 	| ESP32 									|
+| ESP32       | xtensa-esp32s2-elf-gcc  | ESP32-S2 									|
+| ESP32       | xtensa-esp32s3-elf-gcc  | ESP32-S3 									|
+| ESP32       | riscv32-esp-elf-gcc 	| ESP32-C3 									|
 
 Note: The following libraries are not tested - M4 and M33
 

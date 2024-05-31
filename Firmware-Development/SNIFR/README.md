@@ -1,10 +1,12 @@
 # BME-688 on ESP RainMaker
 
+SNIFR Project file is located in "${project-Directory}/appMain/SNIFR/main"
+To make any changes, open the ${project-Directory} in VSCode and navigate to main project folder mentioned above. RUN "idf.py build" in terminal to run build the project.
 
 ## How to use
 
 To reset WiFi credentials press Boot (GPIO 0) button for 3-4secs.
-To reset the device press Boot (GPIO 0) button for >5secs.
+To reset the device press Boot (GPIO 0) button for >10secs.
 
 ## Instructions
 

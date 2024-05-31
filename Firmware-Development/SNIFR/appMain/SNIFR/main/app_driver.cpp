@@ -23,7 +23,7 @@
 static const char *TAG = "[app_driver]";
 
 static bool g_power_state = DEFAULT_SWITCH_POWER;
-float g_gas_ppm = DEFAULT_GAS_PPM;
+extern float g_gas_ppm = DEFAULT_GAS_PPM;
 static TimerHandle_t sensor_timer;
 
 #ifdef __cplusplus
@@ -33,7 +33,7 @@ extern "C" {
 static void app_sensor_update(TimerHandle_t handle)
 {
     if(BME688Run() == ESP_OK){
-        ESP_LOGI(TAG, "%s: g_gas_ppm = %f.", __func__, g_gas_ppm);
+        // ESP_LOGI(TAG, "%s: g_gas_ppm = %f.", __func__, g_gas_ppm);
         esp_rmaker_param_update_and_report(
                     esp_rmaker_device_get_param_by_type(gas_sensor_device, ESP_RMAKER_PARAM_GAS),
                     esp_rmaker_float(g_gas_ppm));

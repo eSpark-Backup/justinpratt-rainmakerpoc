@@ -158,18 +158,18 @@ bool Bsec2::run(void)
         switch (bmeConf.op_mode)
         {
         case BME68X_FORCED_MODE:
-            ESP_LOGI(TAG, "%s: using BME68X_FORCED_MODE.", __func__);
+            // ESP_LOGI(TAG, "%s: using BME68X_FORCED_MODE.", __func__);
             setBme68xConfigForced();
             break;
         case BME68X_PARALLEL_MODE:
-            ESP_LOGI(TAG, "%s: using BME68X_PARALLEL_MODE.", __func__);
+            // ESP_LOGI(TAG, "%s: using BME68X_PARALLEL_MODE.", __func__);
             if (opMode != bmeConf.op_mode)
             {
                 setBme68xConfigParallel();
             }
             break;
         case BME68X_SLEEP_MODE:
-            ESP_LOGI(TAG, "%s: using BME68X_SLEEP_MODE.", __func__);
+            // ESP_LOGI(TAG, "%s: using BME68X_SLEEP_MODE.", __func__);
             if (opMode != bmeConf.op_mode)
             {
                 sensor.setOpMode(BME68X_SLEEP_MODE);
