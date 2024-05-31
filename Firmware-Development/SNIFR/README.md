@@ -22,3 +22,6 @@ Default timer stack "configTIMER_TASK_STACK_DEPTH" was modified to accomodate th
 Default stack size was insuffecient.
 
 configTIMER_TASK_STACK_DEPTH is located in file "FreeRTOSConfig.h"
+
+![image](https://github.com/eSpark-Consultants/justinpratt-rainmakerpoc/assets/152279596/40fbf70a-9d50-414d-8e7b-34ad108d5dc9)
+![image](https://github.com/eSpark-Consultants/justinpratt-rainmakerpoc/assets/152279596/f8d35dc9-fa86-4aa4-a755-e3f51d8be81b)
