@@ -1,7 +1,8 @@
 # BME-688 on ESP RainMaker
 
-SNIFR Project file is located in "${project-Directory}/appMain/SNIFR/main"
-To make any changes, open the ${project-Directory} in VSCode and navigate to main project folder mentioned above. RUN "idf.py build" in terminal to run build the project.
+SNIFR Project file is located in "${project-Directory}/appMain/SNIFR/main".
+
+To make any changes, open the project in VSCode and navigate to "${project-Directory}/appMain/SNIFR" folder mentioned above. RUN "idf.py build" in terminal to start building the project.
 
 This project was built with ESP-IDF v5.1.2
 
