@@ -24,6 +24,23 @@
 
 static const char *TAG = "[BME688]";
 
+/* Configure the BSEC library with information about the sensor
+    18v/33v = Voltage at Vdd. 1.8V or 3.3V
+    3s/300s = BSEC operating mode, BSEC_SAMPLE_RATE_LP or BSEC_SAMPLE_RATE_ULP
+    4d/28d = Operating age of the sensor in days
+    bme688_sel_18v_3s_4d
+    bme688_sel_18v_3s_28d
+    bme688_sel_18v_300s_4d
+    bme688_sel_18v_300s_28d
+    bme688_sel_33v_3s_4d
+    bme688_sel_33v_3s_28d
+    bme688_sel_33v_300s_4d
+    bme688_sel_33v_300s_28d
+*/
+const uint8_t bsec_config_iaq[] = {
+#include "config/bme688_sel_33v_3s_28d/bsec_selectivity.txt"
+};
+
 
 Bsec2 envSensor[DEV_KIT_SENSORS];
 commMux commSetup[DEV_KIT_SENSORS];
@@ -121,7 +138,7 @@ esp_err_t checkBsecStatus(Bsec2 bsec)
         ESP_LOGW(TAG, "%s: BME68X warning code : %d", __func__, bsec.sensor.status);
     }
 
-    ESP_LOGI(TAG, "%s: Status OK.", __func__);
+    // ESP_LOGI(TAG, "%s: Status OK.", __func__);
     return ESP_OK;
 }
 
@@ -212,14 +229,21 @@ esp_err_t BME688Init(void)
         envSensor[i].allocateMemory(bsecMemBlock[i]);
         if (!envSensor[i].begin(BME68X_SPI_INTF, commMuxRead, commMuxWrite, commMuxDelay, &commSetup[i]))
         {
-            //run if errors were encountered while running envSensor[i].begin()
             if(checkBsecStatus (envSensor[i]) != ESP_OK){
                 ESP_LOGW(TAG, "%s: Error encountered while setting up DevKit Sensor %d", __func__, i);
                 return ESP_FAIL;
             }
         }
 
-        if (!envSensor[i].updateSubscription(sensorList, ARRAY_LEN(sensorList), BSEC_SAMPLE_RATE_ULP))
+        if (!envSensor[i].setConfig(bsec_config_iaq))
+        {
+            if(checkBsecStatus (envSensor[i]) != ESP_OK){
+                ESP_LOGW(TAG, "%s: Error encountered while setting up configuration for DevKit Sensor %d", __func__, i);
+                return ESP_FAIL;
+            }
+        }
+
+        if (!envSensor[i].updateSubscription(sensorList, ARRAY_LEN(sensorList), BSEC_SAMPLE_RATE_LP))
         {
             if(checkBsecStatus (envSensor[i]) != ESP_OK){
                 ESP_LOGW(TAG, "%s: Error encountered while setting up DevKit Sensor %d's subscription.", __func__, i);
